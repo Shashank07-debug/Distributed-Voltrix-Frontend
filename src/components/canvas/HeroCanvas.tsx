@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, OrbitControls, Points, PointMaterial } from '@react-three/drei';
 import * as THREE from 'three';
@@ -6,7 +6,6 @@ import { WebGLFallback } from './WebGLFallback';
 
 function AnimatedIcosahedron() {
   const meshRef = useRef<THREE.Mesh>(null!);
-  const wireframeRef = useRef<THREE.LineSegments>(null!);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -19,11 +18,10 @@ function AnimatedIcosahedron() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (meshRef.current) {
       meshRef.current.rotation.x += delta * 0.2;
       meshRef.current.rotation.y += delta * 0.3;
-      // Mouse tracking inertia
       meshRef.current.rotation.x = THREE.MathUtils.lerp(meshRef.current.rotation.x, mousePos.y * 0.5, 0.05);
       meshRef.current.rotation.y = THREE.MathUtils.lerp(meshRef.current.rotation.y, mousePos.x * 0.5, 0.05);
     }
@@ -32,7 +30,6 @@ function AnimatedIcosahedron() {
   return (
     <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
       <group>
-        {/* Core glowing mesh */}
         <mesh ref={meshRef} scale={2.2}>
           <icosahedronGeometry args={[1, 2]} />
           <meshStandardMaterial
@@ -44,8 +41,6 @@ function AnimatedIcosahedron() {
             metalness={0.8}
           />
         </mesh>
-
-        {/* Inner high-voltage cyan core */}
         <mesh scale={1.2}>
           <icosahedronGeometry args={[1, 1]} />
           <meshBasicMaterial color="#06B6D4" wireframe opacity={0.4} transparent />
@@ -57,10 +52,9 @@ function AnimatedIcosahedron() {
 
 function NodeParticleNetwork() {
   const pointsRef = useRef<THREE.Points>(null!);
-  
-  // Generate random 3D point positions
   const count = 300;
-  const positions = React.useMemo(() => {
+
+  const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       pos[i * 3] = (Math.random() - 0.5) * 12;
@@ -70,7 +64,7 @@ function NodeParticleNetwork() {
     return pos;
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (pointsRef.current) {
       pointsRef.current.rotation.y += delta * 0.05;
       pointsRef.current.rotation.x += delta * 0.02;

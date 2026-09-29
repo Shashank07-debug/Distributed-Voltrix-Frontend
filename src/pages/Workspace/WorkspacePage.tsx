@@ -8,9 +8,6 @@ import {
   Shield,
   Code2,
   Eye,
-  MessageSquare,
-  Files,
-  Globe,
   Sparkles,
 } from 'lucide-react';
 import { projectsApi, ProjectSummary, ProjectRole } from '../../api/workspace';

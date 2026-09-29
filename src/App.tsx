@@ -28,12 +28,19 @@ const queryClient = new QueryClient({
 
 export const App: React.FC = () => {
   const [showPreloader, setShowPreloader] = useState<boolean>(() => {
-    // Show preloader only on initial fresh session load
-    return !sessionStorage.getItem('voltrix_visited');
+    try {
+      return !sessionStorage.getItem('voltrix_visited');
+    } catch {
+      return false;
+    }
   });
 
   const handlePreloaderComplete = () => {
-    sessionStorage.setItem('voltrix_visited', 'true');
+    try {
+      sessionStorage.setItem('voltrix_visited', 'true');
+    } catch {
+      // Ignore storage errors in restricted iframe environments
+    }
     setShowPreloader(false);
   };
 

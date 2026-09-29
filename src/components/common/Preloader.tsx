@@ -8,25 +8,82 @@ interface PreloaderProps {
 export const Preloader: React.FC<PreloaderProps> = ({ onComplete }) => {
   const [progress, setProgress] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    let fallbackTimeoutId: ReturnType<typeof setTimeout>;
+
+    // Lock body scroll during preloader
+    document.body.style.overflow = 'hidden';
+
+    const checkReducedMotion = () => {
+      try {
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      } catch {
+        return false;
+      }
+    };
+
+    const isReduced = checkReducedMotion();
+
+    if (isReduced) {
+      // Reduced motion: immediate fade out
+      setIsFadingOut(true);
+      setTimeout(() => {
+        document.body.style.overflow = '';
+        onComplete();
+      }, 200);
+      return;
+    }
+
+    // 1. Wait for document.fonts.ready & hero asset initialization with a 4s hard safety fallback
+    const fontPromise = document.fonts ? document.fonts.ready.catch(() => {}) : Promise.resolve();
+
+    // 4-second maximum safety timer to prevent trapping user on slow connections
+    fallbackTimeoutId = setTimeout(() => {
+      if (isMounted) setIsReady(true);
+    }, 4000);
+
+    fontPromise.then(() => {
+      if (isMounted) setIsReady(true);
+    });
+
+    // 2. Animate voltage progress bar smoothly
     const interval = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
           clearInterval(interval);
-          setTimeout(() => setIsFadingOut(true), 150);
-          setTimeout(() => onComplete(), 500);
+          if (isMounted) {
+            setTimeout(() => setIsFadingOut(true), 150);
+            setTimeout(() => {
+              document.body.style.overflow = '';
+              onComplete();
+            }, 500);
+          }
           return 100;
         }
-        return prev + Math.floor(Math.random() * 15) + 5;
+
+        // Fast progress increment up to 85%, then wait for real readiness if not ready yet
+        if (prev >= 85 && !isReady) {
+          return 85;
+        }
+
+        return prev + Math.floor(Math.random() * 12) + 6;
       });
     }, 40);
 
-    return () => clearInterval(interval);
-  }, [onComplete]);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      clearTimeout(fallbackTimeoutId);
+      document.body.style.overflow = '';
+    };
+  }, [onComplete, isReady]);
 
   return (
     <div
+      aria-hidden="true"
       className={`fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-[#070709] transition-opacity duration-500 ${
         isFadingOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}

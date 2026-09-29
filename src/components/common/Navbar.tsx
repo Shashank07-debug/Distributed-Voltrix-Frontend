@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { Zap, CreditCard, LayoutDashboard, LogOut, User, Sparkles } from 'lucide-react';
+import { CreditCard, LayoutDashboard, LogOut, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
+import { Logo } from '../Logo';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -11,7 +12,7 @@ export const Navbar: React.FC = () => {
   const isWorkspace = location.pathname.startsWith('/projects/');
 
   if (isWorkspace) {
-    // Hide standard navbar inside full-screen workspace page (workspace has its own custom topbar)
+    // Hide standard navbar inside full-screen workspace page
     return null;
   }
 
@@ -20,21 +21,19 @@ export const Navbar: React.FC = () => {
     navigate('/login');
   };
 
+  const homeLink = isAuthenticated() ? '/projects' : '/';
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-voltrix-border bg-[#070709]/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-voltrix-violet to-voltrix-cyan p-0.5 shadow-[0_0_20px_rgba(139,92,246,0.3)] group-hover:scale-105 transition-transform duration-200">
-            <div className="w-full h-full bg-voltrix-bg rounded-[10px] flex items-center justify-center">
-              <Zap className="w-5 h-5 text-voltrix-cyan group-hover:text-voltrix-violet transition-colors" />
-            </div>
-          </div>
-          <div className="flex flex-col">
-            <span className="font-display font-bold text-lg tracking-tight text-white group-hover:text-voltrix-violet-light transition-colors">
-              VOLTRIX
-            </span>
-          </div>
+        {/* Logo link */}
+        <Link to={homeLink} className="flex items-center group transition-transform hover:opacity-95" aria-label="Voltrix Home">
+          <span className="hidden sm:inline-block">
+            <Logo variant="full" size={28} />
+          </span>
+          <span className="inline-block sm:hidden">
+            <Logo variant="mark" size={28} />
+          </span>
         </Link>
 
         {/* Center Nav Links */}
