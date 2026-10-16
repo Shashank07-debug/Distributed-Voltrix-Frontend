@@ -12,6 +12,8 @@ import {
   Brain,
   Sparkles,
   Lock,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react';
 import { chatApi, ChatMessage, ChatEvent } from '../../api/chat';
 import { ProjectRole } from '../../api/workspace';
@@ -56,6 +58,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
 
     return () => {
       isMounted = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [projectId]);
 
@@ -71,11 +76,13 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
     }));
   };
 
-  const handleSend = async () => {
-    if (!inputMessage.trim() || isStreaming || isReadOnly) return;
+  const handleSend = async (customPrompt?: string) => {
+    const userText = (customPrompt !== undefined ? customPrompt : inputMessage).trim();
+    if (!userText || isStreaming || isReadOnly) return;
 
-    const userText = inputMessage.trim();
-    setInputMessage('');
+    if (customPrompt === undefined) {
+      setInputMessage('');
+    }
 
     // Append user message immediately
     const userMsgId = `user-${Date.now()}`;
@@ -103,48 +110,90 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    await chatApi.streamChat({
-      message: userText,
-      projectId,
-      signal: abortController.signal,
-      onEvent: (event: ChatEvent) => {
-        setMessages((prev) => {
-          return prev.map((msg) => {
-            if (msg.id === assistantMsgId) {
-              const updatedEvents = [...msg.events, event];
-              // Trigger file tree refresh if event is FILE_EDIT
-              if (event.type === 'FILE_EDIT' && event.filePath && onFileEdited) {
-                onFileEdited(event.filePath);
+    try {
+      await chatApi.streamChat({
+        message: userText,
+        projectId,
+        signal: abortController.signal,
+        onEvent: (event: ChatEvent) => {
+          setMessages((prev) => {
+            return prev.map((msg) => {
+              if (msg.id === assistantMsgId) {
+                const updatedEvents = [...msg.events, event];
+                // Trigger file tree refresh if event is FILE_EDIT
+                if (event.type === 'FILE_EDIT' && event.filePath && onFileEdited) {
+                  onFileEdited(event.filePath);
+                }
+                return {
+                  ...msg,
+                  events: updatedEvents,
+                  content:
+                    event.type === 'MESSAGE'
+                      ? msg.content + event.content
+                      : msg.content,
+                };
               }
-              return {
-                ...msg,
-                events: updatedEvents,
-                content:
-                  event.type === 'MESSAGE'
-                    ? msg.content + event.content
-                    : msg.content,
-              };
-            }
-            return msg;
+              return msg;
+            });
           });
-        });
-      },
-      onComplete: () => {
-        setIsStreaming(false);
-        abortControllerRef.current = null;
-      },
-      onError: () => {
-        setIsStreaming(false);
-        abortControllerRef.current = null;
-      },
-    });
+        },
+        onComplete: () => {
+          // Handled in finally block
+        },
+        onError: (err: Error) => {
+          setMessages((prev) =>
+            prev.map((msg) => {
+              if (msg.id === assistantMsgId) {
+                return {
+                  ...msg,
+                  error: err.message || 'The connection was lost unexpectedly.',
+                };
+              }
+              return msg;
+            })
+          );
+        },
+      });
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : 'Unexpected streaming failure';
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id === assistantMsgId) {
+            return {
+              ...msg,
+              error: errorMsg,
+            };
+          }
+          return msg;
+        })
+      );
+    } finally {
+      setIsStreaming(false);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleRetry = (assistantMsgIndex: number) => {
+    if (isStreaming) return;
+    // Find preceding user prompt
+    let promptToRetry = '';
+    for (let i = assistantMsgIndex - 1; i >= 0; i--) {
+      if (messages[i].role === 'USER') {
+        promptToRetry = messages[i].content;
+        break;
+      }
+    }
+    if (promptToRetry) {
+      handleSend(promptToRetry);
+    }
   };
 
   const handleStop = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
+    setIsStreaming(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -201,6 +250,17 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
           </div>
         );
 
+      case 'PROGRESS':
+        return (
+          <div
+            key={event.id}
+            className="my-1.5 px-2.5 py-1.5 rounded-lg bg-voltrix-cyan/5 border border-voltrix-cyan/20 font-mono text-[11px] text-voltrix-cyan-light flex items-center gap-2 animate-pulse"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-voltrix-cyan shrink-0" />
+            <span className="truncate">{event.content}</span>
+          </div>
+        );
+
       case 'MESSAGE':
       default:
         return (
@@ -239,7 +299,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
             </p>
           </div>
         ) : (
-          messages.map((msg) => (
+          messages.map((msg, idx) => (
             <div
               key={msg.id}
               className={`flex flex-col ${msg.role === 'USER' ? 'items-end' : 'items-start'}`}
@@ -260,8 +320,34 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
                         .sort((a, b) => (a.sequenceOrder || 0) - (b.sequenceOrder || 0))
                         .map(renderEvent)
                     ) : (
-                      <div className="prose prose-invert prose-sm max-w-none text-gray-200">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                      msg.content && (
+                        <div className="prose prose-invert prose-sm max-w-none text-gray-200">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+                        </div>
+                      )
+                    )}
+
+                    {/* Render Assistant Error Bubble if stream failed */}
+                    {msg.error && (
+                      <div className="mt-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex flex-col gap-2">
+                        <div className="flex items-start gap-2 text-xs">
+                          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                          <div className="flex-1 font-mono text-[11px] leading-relaxed">
+                            <span className="font-semibold text-rose-200">Generation Failed: </span>
+                            <span>{msg.error}</span>
+                          </div>
+                        </div>
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleRetry(idx)}
+                            disabled={isStreaming}
+                            className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-medium flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            <span>Retry</span>
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -302,7 +388,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
               </button>
             ) : (
               <button
-                onClick={handleSend}
+                onClick={() => handleSend()}
                 disabled={!inputMessage.trim()}
                 type="button"
                 className="p-3 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white hover:opacity-90 disabled:opacity-40 transition-all flex items-center justify-center shadow-lg"

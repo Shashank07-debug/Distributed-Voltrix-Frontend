@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { toast } from 'sonner';
 
 export type ChatRole = 'USER' | 'ASSISTANT' | 'SYSTEM' | 'TOOL';
-export type EventType = 'THOUGHT' | 'MESSAGE' | 'FILE_EDIT' | 'TOOL_LOG';
+export type EventType = 'THOUGHT' | 'MESSAGE' | 'FILE_EDIT' | 'TOOL_LOG' | 'PROGRESS' | 'ERROR';
 
 export interface ChatEvent {
   id: string;
@@ -22,23 +22,37 @@ export interface ChatMessage {
   tokenUsed?: number;
   createdAt: string;
   events: ChatEvent[];
+  error?: string;
 }
 
 /**
- * TODO: Confirm real SSE event JSON payload structure with backend owners.
- * This parser assumes each `data:` payload is JSON matching ChatEvent.
- * If parsing fails, it gracefully falls back to treating the payload as plain text of type 'MESSAGE'.
+ * Parses SSE data payload into ChatEvent.
+ * Supports structured JSON (including ERROR and PROGRESS events) and plain text fallback.
  */
 export const parseStreamEvent = (rawData: string): ChatEvent => {
   const trimmed = rawData.trim();
   try {
     const parsed = JSON.parse(trimmed);
     if (parsed && typeof parsed === 'object') {
+      const rawType = (parsed.type || '').toString().toUpperCase();
+      let eventType: EventType = 'MESSAGE';
+      if (
+        rawType === 'THOUGHT' ||
+        rawType === 'FILE_EDIT' ||
+        rawType === 'TOOL_LOG' ||
+        rawType === 'PROGRESS' ||
+        rawType === 'ERROR'
+      ) {
+        eventType = rawType as EventType;
+      } else if (parsed.error || parsed.code) {
+        eventType = 'ERROR';
+      }
+
       return {
         id: parsed.id || `evt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type: (parsed.type as EventType) || 'MESSAGE',
+        type: eventType,
         sequenceOrder: typeof parsed.sequenceOrder === 'number' ? parsed.sequenceOrder : Date.now(),
-        content: parsed.content || '',
+        content: parsed.content || parsed.message || parsed.error || '',
         filePath: parsed.filePath,
         metadata: parsed.metadata,
       };
@@ -81,23 +95,65 @@ export const chatApi = {
     const streamUrl = getFullUrl(INTELLIGENCE_PREFIX, '/chat/stream');
     const token = useAuthStore.getState().token;
 
+    // Internal AbortController for idle timeout management (raised to 90s with 10s heartbeats)
+    const internalController = new AbortController();
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const IDLE_TIMEOUT_MS = 90000; // 90s idle timeout for dead streams
+
+    const resetIdleTimer = () => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        internalController.abort(new Error('Connection timed out - no data or heartbeat received from server for 90 seconds.'));
+      }, IDLE_TIMEOUT_MS);
+    };
+
+    const handleExternalAbort = () => {
+      internalController.abort(signal?.reason || new Error('Stream aborted by user'));
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        handleExternalAbort();
+      } else {
+        signal.addEventListener('abort', handleExternalAbort);
+      }
+    }
+
+    let receivedDone = false;
+
     try {
+      resetIdleTimer();
+
       const response = await fetch(streamUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({ message, projectId }),
-        signal,
+        signal: internalController.signal,
       });
 
       if (!response.ok) {
+        let errorBody = '';
+        try {
+          const errorJson = await response.json();
+          errorBody = errorJson.message || errorJson.error || JSON.stringify(errorJson);
+        } catch {
+          errorBody = await response.text().catch(() => '');
+        }
+
         if (response.status === 401) {
           useAuthStore.getState().logout();
-          toast.error('Session expired during streaming. Please re-authenticate.');
-          window.location.href = '/login';
-          return;
+          toast.error('Session expired. Please log in again.');
+          if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
+            window.location.href = '/login';
+          }
+          throw new Error('Session expired (401). Please log in again.');
+        } else if (response.status === 403) {
+          toast.error('Access Denied: You do not have permission for this workspace.');
+          throw new Error(errorBody || 'Access Denied (403): You do not have permission for this workspace.');
         } else if (response.status === 429) {
           toast.error('Token quota exceeded for daily limit.', {
             action: {
@@ -105,9 +161,10 @@ export const chatApi = {
               onClick: () => { window.location.href = '/billing'; },
             },
           });
-          throw new Error('Token quota limit exceeded');
+          throw new Error(errorBody || 'Token quota limit exceeded (429)');
         }
-        throw new Error(`HTTP Error ${response.status}: ${response.statusText}`);
+
+        throw new Error(errorBody || `HTTP Error ${response.status}: ${response.statusText}`);
       }
 
       if (!response.body) {
@@ -117,59 +174,141 @@ export const chatApi = {
       const reader = response.body.getReader();
       const decoder = new TextDecoder('utf-8');
       let buffer = '';
+      let currentEventType = 'message';
 
       while (true) {
         const { value, done } = await reader.read();
+
+        // Any chunk resets the idle heartbeat timer
+        resetIdleTimer();
+
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split(/\r?\n/);
-        
+
         // Keep the last incomplete line in buffer
         buffer = lines.pop() || '';
 
         for (const line of lines) {
           const trimmedLine = line.trim();
-          if (!trimmedLine || trimmedLine.startsWith(':')) {
-            // Empty line or SSE comment
+          if (!trimmedLine) {
+            currentEventType = 'message';
+            continue;
+          }
+
+          if (trimmedLine.startsWith(':')) {
+            // Heartbeat comment (: ping)
+            resetIdleTimer();
+            continue;
+          }
+
+          if (trimmedLine.startsWith('event:')) {
+            currentEventType = trimmedLine.slice(6).trim();
+            if (currentEventType === 'ping') {
+              resetIdleTimer();
+            }
             continue;
           }
 
           if (trimmedLine.startsWith('data:')) {
             const dataContent = trimmedLine.slice(5).trim();
-            if (dataContent === '[DONE]') {
+            if (!dataContent) continue;
+
+            if (dataContent === '[DONE]' || dataContent === '{"type":"done"}' || dataContent === '{"type":"DONE"}') {
+              receivedDone = true;
               if (onComplete) onComplete();
               return;
             }
 
-            if (dataContent) {
-              const parsedEvent = parseStreamEvent(dataContent);
-              onEvent(parsedEvent);
+            if (currentEventType === 'ping' || dataContent === 'ping') {
+              resetIdleTimer();
+              continue;
             }
+
+            if (currentEventType === 'error') {
+              let errMsg = dataContent;
+              try {
+                const parsed = JSON.parse(dataContent);
+                errMsg = parsed.message || parsed.error || dataContent;
+              } catch {
+                // Keep raw dataContent
+              }
+              throw new Error(errMsg || 'The AI took too long to respond. Please retry.');
+            }
+
+            const parsedEvent = parseStreamEvent(dataContent);
+            if (parsedEvent.type === 'ERROR') {
+              throw new Error(parsedEvent.content || 'The AI took too long to respond. Please retry.');
+            }
+            if ((parsedEvent.type as string).toLowerCase() === 'done') {
+              receivedDone = true;
+              if (onComplete) onComplete();
+              return;
+            }
+
+            // Any progress or message event resets idle timer
+            resetIdleTimer();
+            onEvent(parsedEvent);
           }
         }
       }
 
       // Process any remaining tail in buffer
-      if (buffer.trim().startsWith('data:')) {
-        const dataContent = buffer.trim().slice(5).trim();
-        if (dataContent && dataContent !== '[DONE]') {
-          const parsedEvent = parseStreamEvent(dataContent);
-          onEvent(parsedEvent);
+      if (buffer.trim()) {
+        const trimmedLine = buffer.trim();
+        if (trimmedLine.startsWith('data:')) {
+          const dataContent = trimmedLine.slice(5).trim();
+          if (dataContent === '[DONE]' || dataContent === '{"type":"done"}' || dataContent === '{"type":"DONE"}') {
+            receivedDone = true;
+            if (onComplete) onComplete();
+            return;
+          }
+          if (dataContent) {
+            if (currentEventType === 'error') {
+              let errMsg = dataContent;
+              try {
+                const parsed = JSON.parse(dataContent);
+                errMsg = parsed.message || parsed.error || dataContent;
+              } catch {}
+              throw new Error(errMsg || 'The AI took too long to respond. Please retry.');
+            }
+            const parsedEvent = parseStreamEvent(dataContent);
+            if (parsedEvent.type === 'ERROR') {
+              throw new Error(parsedEvent.content || 'The AI took too long to respond. Please retry.');
+            }
+            if ((parsedEvent.type as string).toLowerCase() === 'done') {
+              receivedDone = true;
+              if (onComplete) onComplete();
+              return;
+            }
+            onEvent(parsedEvent);
+          }
         }
+      }
+
+      // If stream reached EOF without receiving a done event, treat as connection lost
+      if (!receivedDone) {
+        throw new Error('The connection was lost unexpectedly before response finished.');
       }
 
       if (onComplete) onComplete();
     } catch (err: unknown) {
-      if (err instanceof Error && err.name === 'AbortError') {
-        // Stream aborted by user via Stop button
+      if (signal?.aborted) {
+        // Stream aborted cleanly by user via Stop button
         toast.info('AI Response generation stopped');
         if (onComplete) onComplete();
         return;
       }
       const error = err instanceof Error ? err : new Error(String(err));
-      toast.error(`Stream error: ${error.message}`);
+      console.error('[Voltrix AI Stream Error]', error);
+      toast.error(error.message);
       if (onError) onError(error);
+    } finally {
+      if (idleTimer) clearTimeout(idleTimer);
+      if (signal) {
+        signal.removeEventListener('abort', handleExternalAbort);
+      }
     }
   },
 };
