@@ -3,7 +3,7 @@
  * All API requests route through the gateway using prefix definitions below.
  */
 
-export const VITE_API_BASE_URL: string = import.meta.env.VITE_API_BASE_URL || '';
+export const VITE_API_BASE_URL: string = 'https://api.usevoltrix.xyz';
 
 export const ACCOUNT_PREFIX: string = '/api/v1/account';
 export const WORKSPACE_PREFIX: string = '/api/v1/workspace';

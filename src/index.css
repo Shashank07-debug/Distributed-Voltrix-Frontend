@@ -1,7 +1,65 @@
 @import "tailwindcss";
 
+@theme {
+  --color-surface-base: #0B0B0F;
+  --color-surface-panel: #111116;
+  --color-surface-raised: #17171D;
+  --color-surface-overlay: #1D1D25;
+
+  --color-border-subtle: rgba(255, 255, 255, 0.06);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-border-strong: rgba(255, 255, 255, 0.18);
+
+  --color-text-primary: #ECECF1;
+  --color-text-secondary: #A0A0AB;
+  --color-text-tertiary: #6B6B76;
+
+  --color-accent-teal: #06B6D4;
+  --color-accent-teal-hover: #22D3EE;
+  --color-accent-teal-subtle: rgba(6, 182, 212, 0.12);
+  --color-accent-teal-muted: rgba(6, 182, 212, 0.2);
+
+  --color-status-success: #10B981;
+  --color-status-warning: #F59E0B;
+  --color-status-danger: #EF4444;
+
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --panel-header-h: 40px;
+}
+
 @layer base {
   :root {
+    /* Precision Design System Variables */
+    --panel-header-h: 40px;
+
+    --surface-base: #0B0B0F;
+    --surface-panel: #111116;
+    --surface-raised: #17171D;
+    --surface-overlay: #1D1D25;
+
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-hover: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.18);
+
+    --text-primary: #ECECF1;
+    --text-secondary: #A0A0AB;
+    --text-tertiary: #6B6B76;
+
+    --accent-teal: #06B6D4;
+    --accent-teal-hover: #22D3EE;
+    --accent-teal-subtle: rgba(6, 182, 212, 0.12);
+
+    --status-success: #10B981;
+    --status-warning: #F59E0B;
+    --status-danger: #EF4444;
+
+    /* Legacy tokens preserved for ChatPane & other non-redesigned views */
     --bg-void: #070709;
     --accent-violet: #8B5CF6;
     --accent-cyan: #06B6D4;
@@ -9,29 +67,61 @@
   }
 
   body {
-    background-color: #070709;
-    color: #F3F4F6;
-    font-family: 'Inter', sans-serif;
+    background-color: #0B0B0F;
+    color: #ECECF1;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
   }
 
-  /* Custom scrollbar for modern sleek UI */
+  /* Custom scrollbar for precision UI */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: rgba(7, 7, 9, 0.8);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.12);
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(139, 92, 246, 0.5);
+    background: rgba(6, 182, 212, 0.4);
   }
+}
+
+/* Precision Utility Classes */
+.bg-surface-base { background-color: #0B0B0F; }
+.bg-surface-panel { background-color: #111116; }
+.bg-surface-raised { background-color: #17171D; }
+.bg-surface-overlay { background-color: #1D1D25; }
+
+.border-border-subtle { border-color: rgba(255, 255, 255, 0.06); }
+.border-border-hover { border-color: rgba(255, 255, 255, 0.12); }
+.border-border-strong { border-color: rgba(255, 255, 255, 0.18); }
+
+.text-text-primary { color: #ECECF1; }
+.text-text-secondary { color: #A0A0AB; }
+.text-text-tertiary { color: #6B6B76; }
+
+.bg-accent-teal { background-color: #06B6D4; }
+.text-accent-teal { color: #06B6D4; }
+.border-accent-teal { border-color: #06B6D4; }
+
+.bg-status-success { background-color: #10B981; }
+.text-status-success { color: #10B981; }
+.bg-status-warning { background-color: #F59E0B; }
+.text-status-warning { color: #F59E0B; }
+.bg-status-danger { background-color: #EF4444; }
+.text-status-danger { color: #EF4444; }
+
+.focus-visible-ring {
+  outline: 2px solid #06B6D4;
+  outline-offset: 2px;
 }
 
 /* Custom Design Tokens & Classes */
@@ -128,7 +218,7 @@
 
 /* Keyboard Focus Ring */
 :focus-visible {
-  outline: 2px solid #8B5CF6;
+  outline: 2px solid #06B6D4;
   outline-offset: 2px;
 }
 

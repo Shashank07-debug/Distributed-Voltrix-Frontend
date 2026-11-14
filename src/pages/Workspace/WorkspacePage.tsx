@@ -1,13 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Rocket,
   Users,
-  Shield,
-  Code2,
-  Eye,
   Sparkles,
 } from 'lucide-react';
 import { projectsApi, ProjectSummary, ProjectRole } from '../../api/workspace';
@@ -18,6 +15,36 @@ import { MonacoEditorPane } from '../../components/workspace/MonacoEditorPane';
 import { PreviewPane } from '../../components/workspace/PreviewPane';
 import { MembersDrawer } from '../../components/workspace/MembersDrawer';
 import { toast } from 'sonner';
+
+const findDefaultFile = (files: { path: string }[]): string | null => {
+  if (!files || files.length === 0) return null;
+  // 1. src/App.tsx (or App.tsx)
+  const appFile = files.find(
+    (f) =>
+      f.path === 'src/App.tsx' ||
+      f.path.endsWith('/src/App.tsx') ||
+      f.path === 'App.tsx' ||
+      f.path.endsWith('/App.tsx')
+  );
+  if (appFile) return appFile.path;
+
+  // 2. src/main.tsx (or main.tsx / src/index.tsx)
+  const mainFile = files.find(
+    (f) =>
+      f.path === 'src/main.tsx' ||
+      f.path.endsWith('/src/main.tsx') ||
+      f.path === 'src/index.tsx' ||
+      f.path.endsWith('/src/index.tsx')
+  );
+  if (mainFile) return mainFile.path;
+
+  // 3. First file inside src/
+  const srcFile = files.find((f) => f.path.startsWith('src/') || f.path.includes('/src/'));
+  if (srcFile) return srcFile.path;
+
+  // 4. First file in repository
+  return files[0].path;
+};
 
 export const WorkspacePage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -32,6 +59,7 @@ export const WorkspacePage: React.FC = () => {
   const [activeFilePath, setActiveFilePath] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>('');
   const [isLoadingContent, setIsLoadingContent] = useState<boolean>(false);
+  const hasAutoSelectedFileRef = useRef(false);
 
   // Deploy & preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -60,14 +88,19 @@ export const WorkspacePage: React.FC = () => {
       const tree = buildFileTree(filesData.files);
       setFileTree(tree);
 
-      // Auto-open first file if none open
-      if (filesData.files.length > 0 && openTabs.length === 0) {
-        const firstFile = filesData.files[0].path;
-        setOpenTabs([firstFile]);
-        setActiveFilePath(firstFile);
+      // Auto-open prioritized default file only on initial load if no file active
+      if (!hasAutoSelectedFileRef.current && filesData.files.length > 0) {
+        hasAutoSelectedFileRef.current = true;
+        if (activeFilePath === null && openTabs.length === 0) {
+          const defaultFile = findDefaultFile(filesData.files);
+          if (defaultFile) {
+            setOpenTabs([defaultFile]);
+            setActiveFilePath(defaultFile);
+          }
+        }
       }
     }
-  }, [filesData]);
+  }, [filesData, activeFilePath, openTabs.length]);
 
   // Load File Content when active tab changes
   useEffect(() => {
@@ -129,70 +162,104 @@ export const WorkspacePage: React.FC = () => {
 
   if (isLoadingProject) {
     return (
-      <div className="h-screen w-screen bg-[#070709] flex flex-col items-center justify-center text-xs font-mono text-voltrix-muted">
-        <Sparkles className="w-8 h-8 text-voltrix-cyan animate-spin mb-3" />
+      <div className="h-screen w-screen bg-surface-base flex flex-col items-center justify-center text-[13px] font-sans text-text-secondary">
+        <Sparkles className="w-6 h-6 text-accent-teal animate-spin mb-3" />
         Initializing Voltrix Workspace...
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#070709] overflow-hidden text-gray-100 selection:bg-voltrix-violet selection:text-white">
-      {/* Workspace Top Bar */}
-      <header className="h-14 border-b border-voltrix-border bg-[#0D0E15] px-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
+    <div className="h-screen w-screen flex flex-col bg-surface-base overflow-hidden text-text-primary selection:bg-accent-teal/30 selection:text-text-primary font-sans">
+      {/* Workspace Top Bar (48px) */}
+      <header className="h-[48px] min-h-[48px] max-h-[48px] box-border border-b border-border-subtle bg-surface-base px-3.5 flex items-center justify-between shrink-0 select-none">
+        <div className="flex items-center gap-3 min-w-0">
           <Link
             to="/projects"
-            className="p-1.5 rounded-lg text-voltrix-muted hover:text-white hover:bg-white/5 transition-colors"
+            className="p-1.5 rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-accent"
             title="Back to Dashboard"
+            aria-label="Back to Projects Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
 
-          <div className="flex items-center gap-2">
-            <span className="font-display font-bold text-sm text-white">{project?.name || 'Workspace'}</span>
-            {role === 'OWNER' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-voltrix-violet/20 text-voltrix-violet-light border border-voltrix-violet/30">
-                <Shield className="w-3 h-3" /> OWNER
-              </span>
-            )}
-            {role === 'EDITOR' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-voltrix-cyan/20 text-voltrix-cyan-light border border-voltrix-cyan/30">
-                <Code2 className="w-3 h-3" /> EDITOR
-              </span>
-            )}
-            {role === 'VIEWER' && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-gray-800 text-gray-400 border border-gray-700">
-                <Eye className="w-3 h-3" /> VIEWER
-              </span>
+          {/* Breadcrumb: Projects / <project name> */}
+          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] font-sans">
+            <Link
+              to="/projects"
+              className="text-text-tertiary hover:text-text-secondary transition-colors"
+            >
+              Projects
+            </Link>
+            <span className="text-text-tertiary">/</span>
+            <span className="text-text-primary font-medium truncate max-w-[140px] sm:max-w-[220px]">
+              {project?.name || 'Workspace'}
+            </span>
+          </nav>
+
+          {/* Role badge: No OWNER badge; quiet neutral tag only for Editor / Viewer */}
+          {role === 'EDITOR' && (
+            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-sans font-medium text-text-tertiary bg-surface-raised border border-border-subtle">
+              Editor
+            </span>
+          )}
+          {role === 'VIEWER' && (
+            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-sans font-medium text-text-tertiary bg-surface-raised border border-border-subtle">
+              Viewer
+            </span>
+          )}
+
+          {/* Quiet Status Chip */}
+          <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-sans text-text-tertiary bg-surface-panel border border-border-subtle">
+            {deployMutation.isPending ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-status-warning animate-pulse" />
+                <span className="text-text-secondary">Building</span>
+              </>
+            ) : previewUrl ? (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
+                <span className="text-text-secondary">Live</span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary opacity-50" />
+                <span>Not deployed</span>
+              </>
             )}
           </div>
         </div>
 
-        {/* Desktop / Mobile Actions */}
-        <div className="flex items-center gap-3">
-          {/* Mobile view switch tabs */}
-          <div className="flex lg:hidden bg-white/5 p-1 rounded-xl">
+        {/* Desktop Actions & Mobile Segmented Switcher */}
+        <div className="flex items-center gap-2">
+          {/* Mobile view switch tabs (segmented control) */}
+          <div className="flex lg:hidden bg-surface-panel p-0.5 rounded-lg border border-border-subtle">
             <button
               onClick={() => setMobileTab('chat')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors ${
-                mobileTab === 'chat' ? 'bg-voltrix-violet text-white' : 'text-gray-400'
+              className={`px-2.5 py-1 rounded-md text-[12px] font-sans font-medium transition-colors ${
+                mobileTab === 'chat'
+                  ? 'bg-surface-raised text-text-primary shadow-xs'
+                  : 'text-text-tertiary hover:text-text-secondary'
               }`}
             >
               Chat
             </button>
             <button
               onClick={() => setMobileTab('files')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors ${
-                mobileTab === 'files' ? 'bg-voltrix-violet text-white' : 'text-gray-400'
+              className={`px-2.5 py-1 rounded-md text-[12px] font-sans font-medium transition-colors ${
+                mobileTab === 'files'
+                  ? 'bg-surface-raised text-text-primary shadow-xs'
+                  : 'text-text-tertiary hover:text-text-secondary'
               }`}
             >
               Files
             </button>
             <button
               onClick={() => setMobileTab('preview')}
-              className={`px-3 py-1 rounded-lg text-xs font-mono transition-colors ${
-                mobileTab === 'preview' ? 'bg-voltrix-violet text-white' : 'text-gray-400'
+              className={`px-2.5 py-1 rounded-md text-[12px] font-sans font-medium transition-colors ${
+                mobileTab === 'preview'
+                  ? 'bg-surface-raised text-text-primary shadow-xs'
+                  : 'text-text-tertiary hover:text-text-secondary'
               }`}
             >
               Preview
@@ -201,9 +268,11 @@ export const WorkspacePage: React.FC = () => {
 
           <button
             onClick={() => setIsMembersOpen(true)}
-            className="px-3 py-1.5 rounded-xl bg-voltrix-card hover:bg-voltrix-card-hover border border-voltrix-border text-xs font-medium text-gray-300 hover:text-white flex items-center gap-1.5 transition-all"
+            className="h-8 px-2.5 rounded-lg bg-transparent hover:bg-surface-raised border border-border-subtle hover:border-border-hover text-[13px] font-sans font-medium text-text-secondary hover:text-text-primary flex items-center gap-1.5 transition-colors focus-visible:outline-accent cursor-pointer"
+            title="View Collaborators"
+            aria-label="View Project Collaborators"
           >
-            <Users className="w-3.5 h-3.5 text-voltrix-cyan" />
+            <Users className="w-3.5 h-3.5 text-text-tertiary" />
             <span className="hidden sm:inline">Collaborators</span>
           </button>
 
@@ -211,10 +280,12 @@ export const WorkspacePage: React.FC = () => {
             <button
               onClick={() => deployMutation.mutate()}
               disabled={deployMutation.isPending}
-              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:opacity-90 transition-all flex items-center gap-1.5"
+              className="h-8 px-3 rounded-lg bg-accent-teal hover:bg-accent-teal-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-[#0B0B0F] text-[13px] font-sans font-medium transition-colors flex items-center gap-1.5 focus-visible:outline-accent cursor-pointer"
+              title="Deploy project preview"
+              aria-label="Deploy preview"
             >
-              <Rocket className="w-3.5 h-3.5" />
-              <span>{deployMutation.isPending ? 'Deploying...' : 'Deploy Preview'}</span>
+              <Rocket className="w-3.5 h-3.5 text-[#0B0B0F]" />
+              <span>{deployMutation.isPending ? 'Deploying...' : 'Deploy'}</span>
             </button>
           )}
         </div>
@@ -222,10 +293,10 @@ export const WorkspacePage: React.FC = () => {
 
       {/* Main 3-Pane Resizable Grid (Desktop) vs Tabs (Mobile) */}
       <div className="flex-1 overflow-hidden relative">
-        {/* Desktop Layout */}
-        <div className="hidden lg:grid grid-cols-12 h-full">
-          {/* Left Pane: Chat (3.5 cols) */}
-          <div className="col-span-3 h-full overflow-hidden">
+        {/* Desktop Layout with Balanced Proportions & 1px Dividers */}
+        <div className="hidden lg:flex h-full w-full overflow-hidden bg-surface-base">
+          {/* Panel 1: Chat Pane (300px - 360px) */}
+          <div className="w-[300px] xl:w-[330px] 2xl:w-[360px] shrink-0 h-full overflow-hidden border-r border-border-subtle bg-surface-base">
             <ChatPane
               projectId={projectId!}
               role={role}
@@ -233,30 +304,30 @@ export const WorkspacePage: React.FC = () => {
             />
           </div>
 
-          {/* Middle Pane: Files Explorer (2.5 cols) + Monaco Editor (3.5 cols) */}
-          <div className="col-span-5 h-full grid grid-cols-5 border-r border-voltrix-border overflow-hidden">
-            <div className="col-span-2 h-full overflow-hidden">
-              <FileExplorerPane
-                tree={fileTree}
-                activeFilePath={activeFilePath}
-                onSelectFile={handleSelectFile}
-                isLoading={isLoadingFiles}
-              />
-            </div>
-            <div className="col-span-3 h-full overflow-hidden">
-              <MonacoEditorPane
-                openTabs={openTabs}
-                activeFilePath={activeFilePath}
-                fileContent={fileContent}
-                isLoadingContent={isLoadingContent}
-                onSelectTab={setActiveFilePath}
-                onCloseTab={handleCloseTab}
-              />
-            </div>
+          {/* Panel 2: Files Explorer (Fixed 240px) */}
+          <div className="w-[240px] min-w-[240px] max-w-[240px] shrink-0 h-full overflow-hidden border-r border-border-subtle bg-surface-base">
+            <FileExplorerPane
+              tree={fileTree}
+              activeFilePath={activeFilePath}
+              onSelectFile={handleSelectFile}
+              isLoading={isLoadingFiles}
+            />
           </div>
 
-          {/* Right Pane: Live Preview Iframe (4 cols) */}
-          <div className="col-span-4 h-full overflow-hidden">
+          {/* Panel 3: Monaco Editor (Primary Surface, flex-1.1) */}
+          <div className="flex-[1.1] min-w-[320px] h-full overflow-hidden border-r border-border-subtle bg-surface-base">
+            <MonacoEditorPane
+              openTabs={openTabs}
+              activeFilePath={activeFilePath}
+              fileContent={fileContent}
+              isLoadingContent={isLoadingContent}
+              onSelectTab={setActiveFilePath}
+              onCloseTab={handleCloseTab}
+            />
+          </div>
+
+          {/* Panel 4: Live Preview Pane (flex-1) */}
+          <div className="flex-1 min-w-[300px] h-full overflow-hidden bg-surface-base">
             <PreviewPane
               previewUrl={previewUrl}
               onDeploy={() => deployMutation.mutate()}

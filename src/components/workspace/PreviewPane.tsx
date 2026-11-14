@@ -21,9 +21,9 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#070709] border-l border-voltrix-border">
+    <div className="flex flex-col h-full bg-[#0B0B0F]">
       {/* Top Preview Bar */}
-      <div className="px-3 py-2 border-b border-voltrix-border flex items-center justify-between bg-voltrix-card/40 text-xs">
+      <div className="h-[var(--panel-header-h,40px)] min-h-[40px] max-h-[40px] box-border px-3 border-b border-border-subtle flex items-center justify-between bg-surface-base text-xs shrink-0">
         <div className="flex items-center gap-2 max-w-[70%]">
           <Globe className="w-3.5 h-3.5 text-voltrix-cyan shrink-0" />
           <span className="font-mono text-gray-300 truncate">

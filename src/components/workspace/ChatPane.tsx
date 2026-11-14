@@ -274,7 +274,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
   return (
     <div className="flex flex-col h-full bg-[#070709] border-r border-voltrix-border">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-voltrix-border flex items-center justify-between bg-voltrix-card/50">
+      <div className="h-[var(--panel-header-h,40px)] min-h-[40px] max-h-[40px] box-border px-3.5 border-b border-voltrix-border flex items-center justify-between bg-voltrix-card/50 shrink-0">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-voltrix-cyan" />
           <span className="font-display font-semibold text-xs text-white">Voltrix AI Builder</span>

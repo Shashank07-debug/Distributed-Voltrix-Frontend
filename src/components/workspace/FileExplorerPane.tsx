@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { Folder, FolderOpen, FileCode, ChevronRight, ChevronDown, Files } from 'lucide-react';
+import {
+  Folder,
+  FolderOpen,
+  FileCode,
+  FileJson,
+  FileText,
+  FileImage,
+  File,
+  Settings,
+  ChevronRight,
+} from 'lucide-react';
 import { FileNode } from '../../utils/fileTree';
 
 interface FileExplorerPaneProps {
@@ -8,6 +18,50 @@ interface FileExplorerPaneProps {
   onSelectFile: (filePath: string) => void;
   isLoading?: boolean;
 }
+
+export const getFileIcon = (fileName: string) => {
+  const lower = fileName.toLowerCase();
+  if (
+    lower.startsWith('.git') ||
+    lower.startsWith('.env') ||
+    lower.includes('config') ||
+    lower.includes('tsconfig') ||
+    lower.includes('package') ||
+    lower.startsWith('.oxlint')
+  ) {
+    return <Settings className="w-3.5 h-3.5 text-text-tertiary shrink-0" />;
+  }
+
+  const ext = lower.split('.').pop();
+  switch (ext) {
+    case 'tsx':
+    case 'jsx':
+      return <FileCode className="w-3.5 h-3.5 text-cyan-400/80 shrink-0" />;
+    case 'ts':
+    case 'js':
+    case 'mjs':
+      return <FileCode className="w-3.5 h-3.5 text-sky-400/80 shrink-0" />;
+    case 'css':
+    case 'scss':
+      return <FileCode className="w-3.5 h-3.5 text-pink-400/80 shrink-0" />;
+    case 'json':
+      return <FileJson className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />;
+    case 'html':
+      return <FileCode className="w-3.5 h-3.5 text-orange-400/80 shrink-0" />;
+    case 'md':
+    case 'txt':
+      return <FileText className="w-3.5 h-3.5 text-slate-400/80 shrink-0" />;
+    case 'svg':
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'ico':
+    case 'webp':
+      return <FileImage className="w-3.5 h-3.5 text-emerald-400/80 shrink-0" />;
+    default:
+      return <File className="w-3.5 h-3.5 text-text-tertiary shrink-0" />;
+  }
+};
 
 const FileTreeNodeItem: React.FC<{
   node: FileNode;
@@ -20,47 +74,80 @@ const FileTreeNodeItem: React.FC<{
 
   const handleClick = () => {
     if (node.isDirectory) {
-      setIsOpen(!isOpen);
+      setIsOpen((prev) => !prev);
     } else {
       onSelectFile(node.path);
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleClick();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (node.isDirectory && !isOpen) {
+        setIsOpen(true);
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (node.isDirectory && isOpen) {
+        setIsOpen(false);
+      }
+    }
+  };
+
   return (
-    <div>
+    <div role="none" className="relative">
+      {/* Subtle guide line for nested children */}
+      {depth > 0 && (
+        <span
+          className="absolute left-0 top-0 bottom-0 border-l border-white/[0.04]"
+          style={{ left: `${depth * 14}px` }}
+        />
+      )}
+
       <button
+        type="button"
+        role="treeitem"
+        aria-selected={isSelected}
+        aria-expanded={node.isDirectory ? isOpen : undefined}
+        tabIndex={isSelected ? 0 : -1}
         onClick={handleClick}
-        style={{ paddingLeft: `${depth * 12 + 12}px` }}
-        className={`w-full py-1 pr-3 flex items-center gap-2 text-xs font-mono transition-colors rounded-md ${
+        onKeyDown={handleKeyDown}
+        style={{ paddingLeft: `${depth * 14 + 8}px` }}
+        className={`w-full h-7 px-2 flex items-center gap-1.5 text-[13px] font-sans transition-colors rounded-md select-none group text-left cursor-pointer focus-visible:outline-accent ${
           isSelected
-            ? 'bg-voltrix-violet/20 text-voltrix-cyan border-l-2 border-voltrix-cyan font-semibold'
-            : 'text-gray-400 hover:text-white hover:bg-white/5'
+            ? 'bg-surface-raised text-accent-teal font-medium'
+            : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised/60'
         }`}
       >
         {node.isDirectory ? (
           <>
+            <ChevronRight
+              className={`w-3.5 h-3.5 text-text-tertiary shrink-0 transition-transform duration-150 ease-out ${
+                isOpen ? 'rotate-90' : ''
+              }`}
+            />
             {isOpen ? (
-              <ChevronDown className="w-3.5 h-3.5 text-voltrix-muted shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-text-secondary shrink-0" />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-voltrix-muted shrink-0" />
-            )}
-            {isOpen ? (
-              <FolderOpen className="w-3.5 h-3.5 text-voltrix-violet-light shrink-0" />
-            ) : (
-              <Folder className="w-3.5 h-3.5 text-voltrix-violet-light shrink-0" />
+              <Folder className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
             )}
           </>
         ) : (
           <>
-            <span className="w-3.5 h-3.5 inline-block shrink-0" />
-            <FileCode className="w-3.5 h-3.5 text-voltrix-cyan shrink-0" />
+            <span className="w-3.5 h-3.5 shrink-0" />
+            {getFileIcon(node.name)}
           </>
         )}
-        <span className="truncate">{node.name}</span>
+        <span className="truncate flex-1" title={node.path}>
+          {node.name}
+        </span>
       </button>
 
       {node.isDirectory && isOpen && node.children && (
-        <div>
+        <div role="group">
           {node.children.map((child) => (
             <FileTreeNodeItem
               key={child.path}
@@ -83,21 +170,27 @@ export const FileExplorerPane: React.FC<FileExplorerPaneProps> = ({
   isLoading,
 }) => {
   return (
-    <div className="h-full flex flex-col bg-[#08090E] border-r border-voltrix-border">
-      <div className="px-3 py-2 border-b border-voltrix-border flex items-center justify-between bg-voltrix-card/30">
-        <div className="flex items-center gap-2">
-          <Files className="w-3.5 h-3.5 text-voltrix-violet-light" />
-          <span className="font-mono text-xs font-medium text-gray-300 uppercase tracking-wider">
-            Files Explorer
-          </span>
-        </div>
+    <div className="h-full flex flex-col bg-surface-base select-none">
+      {/* 40px Header matching --panel-header-h token */}
+      <div className="h-[var(--panel-header-h,40px)] min-h-[40px] max-h-[40px] box-border px-3 border-b border-border-subtle flex items-center justify-between bg-surface-base shrink-0">
+        <span className="text-[12px] font-sans font-semibold text-text-tertiary uppercase tracking-wider">
+          Files
+        </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-2">
+      <div
+        role="tree"
+        aria-label="Project Files"
+        className="flex-1 overflow-y-auto p-1.5 space-y-0.5"
+      >
         {isLoading ? (
-          <div className="p-4 text-xs font-mono text-voltrix-muted">Loading project files...</div>
+          <div className="p-3 text-[12px] font-sans text-text-tertiary">
+            Loading project files...
+          </div>
         ) : tree.length === 0 ? (
-          <div className="p-4 text-xs font-mono text-voltrix-muted">No files found in workspace</div>
+          <div className="p-3 text-[12px] font-sans text-text-tertiary">
+            No files found in workspace
+          </div>
         ) : (
           tree.map((node) => (
             <FileTreeNodeItem
