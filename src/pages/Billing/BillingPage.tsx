@@ -1,17 +1,27 @@
 import React, { useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
-import { Zap, CreditCard, Check, Sparkles, AlertCircle, ArrowUpRight } from 'lucide-react';
+import { CreditCard, Check, Sparkles, AlertTriangle, ArrowUpRight, RotateCcw } from 'lucide-react';
 import { billingApi, SubscriptionData } from '../../api/billing';
-import { PLANS, PlanDefinition } from '../../config/plans';
+import { PRICING_DISPLAY, PricingCardDisplay } from '../../config/plans';
 import { toast } from 'sonner';
+
+const currencyFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  maximumFractionDigits: 0,
+});
 
 export const BillingPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const queryClient = useQueryClient();
 
-  // Fetch current subscription
-  const { data: subData, isLoading, refetch } = useQuery<SubscriptionData>({
+  // Fetch current subscription - NEVER fall back to hardcoded data
+  const {
+    data: subData,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery<SubscriptionData>({
     queryKey: ['subscription'],
     queryFn: billingApi.getSubscription,
   });
@@ -25,7 +35,9 @@ export const BillingPage: React.FC = () => {
       }
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to initialize checkout';
+      const msg =
+        (err as { message?: string })?.message ||
+        'Failed to initialize checkout session';
       toast.error(msg);
     },
   });
@@ -39,13 +51,14 @@ export const BillingPage: React.FC = () => {
       }
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to open billing portal';
+      const msg =
+        (err as { message?: string })?.message ||
+        'Failed to open billing portal';
       toast.error(msg);
     },
   });
 
-  // Handle Stripe return query parameters ?success=true / ?canceled=true
-  // TODO: Confirm exact Stripe redirect return paths and parameter names with backend owner.
+  // Handle Stripe redirect parameters ?success=true / ?canceled=true
   useEffect(() => {
     const success = searchParams.get('success');
     const canceled = searchParams.get('canceled');
@@ -60,11 +73,18 @@ export const BillingPage: React.FC = () => {
     }
   }, [searchParams, setSearchParams, refetch]);
 
-  const currentPlanId = subData?.plan?.id || 1;
-  const maxTokens = subData?.plan?.maxTokensPerDay || 50000;
-  const usedTokens = subData?.tokenUsedThisCycle || 0;
-  const isUnlimited = subData?.plan?.unlimitedAi ?? false;
-  const usagePercentage = isUnlimited ? 0 : Math.min(100, Math.round((usedTokens / maxTokens) * 100));
+  // Current plan details from API only
+  const currentPlan = subData?.plan;
+  const isPlanActive = subData?.status === 'ACTIVE';
+
+  const usedTokens = subData?.tokenUsedThisCycle ?? 0;
+  const maxTokens = currentPlan?.maxTokensPerDay;
+  const isUnlimitedAi = currentPlan?.unlimitedAi ?? false;
+
+  const usagePercentage =
+    isUnlimitedAi || !maxTokens || maxTokens <= 0
+      ? 0
+      : Math.min(100, Math.round((usedTokens / maxTokens) * 100));
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-[#070709] px-4 sm:px-6 lg:px-8 py-12">
@@ -82,120 +102,211 @@ export const BillingPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Current Active Plan Status Banner */}
-        <div className="mb-12 p-6 sm:p-8 rounded-3xl glass-panel border border-voltrix-border relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-voltrix-violet/10 blur-[100px] pointer-events-none" />
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h2 className="font-display text-xl font-bold text-white">
-                  Current Plan: <span className="text-voltrix-cyan">{subData?.plan?.name || 'Free Tier'}</span>
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  {subData?.status || 'ACTIVE'}
-                </span>
+        {/* Loading Skeleton */}
+        {isLoading && (
+          <div className="space-y-12">
+            <div className="p-8 rounded-3xl glass-panel border border-voltrix-border animate-pulse h-48 flex flex-col justify-between">
+              <div className="space-y-3">
+                <div className="h-6 bg-white/10 rounded w-1/4" />
+                <div className="h-4 bg-white/5 rounded w-1/6" />
               </div>
-              <p className="text-xs text-voltrix-muted">
-                Period End:{' '}
-                {subData?.periodEnd
-                  ? new Date(subData.periodEnd).toLocaleDateString()
-                  : 'Renews Daily'}
-              </p>
+              <div className="h-4 bg-white/10 rounded w-1/3" />
             </div>
-
-            {/* Token Usage Progress Bar or Unlimited Badge */}
-            <div className="w-full md:w-80 space-y-2">
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-gray-300">Daily Token Usage</span>
-                {isUnlimited ? (
-                  <span className="text-voltrix-cyan font-bold">UNLIMITED AI</span>
-                ) : (
-                  <span className="text-voltrix-violet-light">
-                    {usedTokens.toLocaleString()} / {maxTokens.toLocaleString()}
-                  </span>
-                )}
-              </div>
-
-              {!isUnlimited && (
-                <div className="w-full h-2 rounded-full bg-voltrix-card border border-white/10 overflow-hidden">
-                  <div
-                    className={`h-full transition-all duration-300 rounded-full ${
-                      usagePercentage > 90
-                        ? 'bg-rose-500'
-                        : 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan'
-                    }`}
-                    style={{ width: `${usagePercentage}%` }}
-                  />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="rounded-3xl p-8 glass-panel border border-voltrix-border animate-pulse h-96 flex flex-col justify-between"
+                >
+                  <div className="space-y-4">
+                    <div className="h-6 bg-white/10 rounded w-1/3" />
+                    <div className="h-4 bg-white/5 rounded w-full" />
+                    <div className="h-10 bg-white/10 rounded w-1/2" />
+                  </div>
+                  <div className="h-10 bg-white/10 rounded-xl w-full" />
                 </div>
-              )}
-
-              <button
-                onClick={() => portalMutation.mutate()}
-                disabled={portalMutation.isPending}
-                className="mt-2 text-xs font-semibold text-voltrix-cyan hover:underline inline-flex items-center gap-1"
-              >
-                <CreditCard className="w-3.5 h-3.5" /> Manage Billing Portal <ArrowUpRight className="w-3.5 h-3.5" />
-              </button>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {PLANS.map((plan: PlanDefinition) => {
-            const isCurrent = currentPlanId === plan.id;
-            return (
-              <div
-                key={plan.id}
-                className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
-                  plan.isPopular
-                    ? 'bg-gradient-to-b from-[#141622] to-[#0D0E15] border-2 border-voltrix-violet shadow-[0_0_40px_rgba(139,92,246,0.2)] scale-105'
-                    : 'glass-panel border border-voltrix-border hover:border-white/20'
-                }`}
-              >
-                {plan.isPopular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-[10px] font-mono font-bold tracking-wider uppercase shadow-md">
-                    Most Popular
+        {/* Error State with Retry Button - NEVER fallback to Free on failure */}
+        {!isLoading && (isError || !currentPlan) && (
+          <div className="mb-12 p-8 rounded-3xl bg-rose-500/10 border border-rose-500/30 text-center max-w-xl mx-auto">
+            <AlertTriangle className="w-10 h-10 text-rose-400 mx-auto mb-3" />
+            <h2 className="font-display text-lg font-bold text-white mb-2">
+              Failed to load subscription details
+            </h2>
+            <p className="text-xs text-rose-300 mb-6">
+              Could not retrieve your current plan information from the server.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="px-5 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-semibold inline-flex items-center gap-2 transition-colors"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Retry Connection
+            </button>
+          </div>
+        )}
+
+        {/* Current Active Plan Status Banner */}
+        {!isLoading && !isError && currentPlan && (
+          <div className="mb-12 p-6 sm:p-8 rounded-3xl glass-panel border border-voltrix-border relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-80 h-80 bg-voltrix-violet/10 blur-[100px] pointer-events-none" />
+
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h2 className="font-display text-xl font-bold text-white">
+                    Current Plan: <span className="text-voltrix-cyan">{currentPlan.name}</span>
+                  </h2>
+                  {isPlanActive && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      ACTIVE
+                    </span>
+                  )}
+                  {subData?.status && !isPlanActive && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      {subData.status}
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-voltrix-muted">
+                  Period End:{' '}
+                  {subData?.periodEnd
+                    ? new Date(subData.periodEnd).toLocaleDateString()
+                    : 'N/A'}
+                </p>
+                {currentPlan.maxProjects != null && (
+                  <p className="text-xs text-voltrix-muted mt-1 font-mono">
+                    Project Allowance: <span className="text-white font-semibold">{currentPlan.maxProjects}</span> active projects
+                  </p>
+                )}
+              </div>
+
+              {/* Token Usage Progress Bar or Unlimited Badge */}
+              <div className="w-full md:w-80 space-y-2">
+                <div className="flex justify-between items-center text-xs font-mono">
+                  <span className="text-gray-300">Daily Token Usage</span>
+                  {isUnlimitedAi ? (
+                    <span className="text-voltrix-cyan font-bold">UNLIMITED AI</span>
+                  ) : maxTokens != null ? (
+                    <span className="text-voltrix-violet-light">
+                      {usedTokens.toLocaleString()} / {maxTokens.toLocaleString()}
+                    </span>
+                  ) : (
+                    <span className="text-voltrix-violet-light">
+                      {usedTokens.toLocaleString()} tokens used
+                    </span>
+                  )}
+                </div>
+
+                {!isUnlimitedAi && maxTokens != null && (
+                  <div className="w-full h-2 rounded-full bg-voltrix-card border border-white/10 overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-300 rounded-full ${
+                        usagePercentage > 90
+                          ? 'bg-rose-500'
+                          : 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan'
+                      }`}
+                      style={{ width: `${usagePercentage}%` }}
+                    />
                   </div>
                 )}
 
-                <div>
-                  <h3 className="font-display text-xl font-bold text-white mb-2">{plan.name}</h3>
-                  <p className="text-xs text-voltrix-muted mb-6 leading-relaxed">{plan.description}</p>
-
-                  <div className="mb-6">
-                    <span className="font-display text-4xl font-bold text-white">{plan.price}</span>
-                    <span className="text-xs text-voltrix-muted ml-1 font-mono">/ {plan.billingCycle}</span>
-                  </div>
-
-                  <ul className="space-y-3 mb-8">
-                    {plan.features.map((feat, idx) => (
-                      <li key={idx} className="flex items-center gap-2.5 text-xs text-gray-300">
-                        <Check className="w-4 h-4 text-voltrix-cyan shrink-0" />
-                        <span>{feat}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
                 <button
-                  onClick={() => checkoutMutation.mutate(plan.id)}
-                  disabled={isCurrent || checkoutMutation.isPending}
-                  className={`w-full py-3 rounded-xl text-xs font-semibold transition-all ${
-                    isCurrent
-                      ? 'bg-white/10 text-gray-400 cursor-default'
-                      : plan.isPopular
-                      ? 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white shadow-lg hover:opacity-90'
-                      : 'bg-voltrix-card hover:bg-voltrix-card-hover text-white border border-voltrix-border hover:border-voltrix-cyan'
-                  }`}
+                  onClick={() => portalMutation.mutate()}
+                  disabled={portalMutation.isPending}
+                  className="mt-2 text-xs font-semibold text-voltrix-cyan hover:underline inline-flex items-center gap-1"
                 >
-                  {isCurrent ? 'Current Plan' : `Upgrade to ${plan.name}`}
+                  <CreditCard className="w-3.5 h-3.5" /> Manage Billing Portal <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
               </div>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
+
+        {/* Pricing Cards Grid */}
+        {!isLoading && !isError && currentPlan && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {PRICING_DISPLAY.map((card: PricingCardDisplay) => {
+              // Current plan check based on API plan name (case-insensitive) or id
+              const isCurrent =
+                currentPlan.name?.toUpperCase() === card.name.toUpperCase() ||
+                currentPlan.id === card.id;
+
+              // Build feature bullets:
+              // For the CURRENT plan, generate bullets with real numbers from API data
+              // For other plans, only display static features (no hardcoded limits/claims)
+              const dynamicBullets: string[] = [];
+              if (isCurrent) {
+                if (currentPlan.maxProjects != null) {
+                  dynamicBullets.push(`Up to ${currentPlan.maxProjects} active projects`);
+                }
+                if (currentPlan.unlimitedAi) {
+                  dynamicBullets.push('Unlimited AI token generation');
+                } else if (currentPlan.maxTokensPerDay != null) {
+                  dynamicBullets.push(`${currentPlan.maxTokensPerDay.toLocaleString()} tokens / day AI generation`);
+                }
+              }
+
+              const allFeatures = [...dynamicBullets, ...card.staticFeatures];
+
+              return (
+                <div
+                  key={card.id}
+                  className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
+                    card.isPopular
+                      ? 'bg-gradient-to-b from-[#141622] to-[#0D0E15] border-2 border-voltrix-violet shadow-[0_0_40px_rgba(139,92,246,0.2)] scale-105'
+                      : 'glass-panel border border-voltrix-border hover:border-white/20'
+                  }`}
+                >
+                  {card.isPopular && (
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-[10px] font-mono font-bold tracking-wider uppercase shadow-md">
+                      Most Popular
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className="font-display text-xl font-bold text-white mb-2">{card.displayName}</h3>
+                    <p className="text-xs text-voltrix-muted mb-6 leading-relaxed">{card.description}</p>
+
+                    <div className="mb-6">
+                      <span className="font-display text-4xl font-bold text-white">
+                        {currencyFormatter.format(card.priceMonthly)}
+                      </span>
+                      <span className="text-xs text-voltrix-muted ml-1 font-mono">/ {card.billingCycle}</span>
+                    </div>
+
+                    <ul className="space-y-3 mb-8">
+                      {allFeatures.map((feat, idx) => (
+                        <li key={idx} className="flex items-center gap-2.5 text-xs text-gray-300">
+                          <Check className="w-4 h-4 text-voltrix-cyan shrink-0" />
+                          <span>{feat}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => checkoutMutation.mutate(card.id)}
+                    disabled={isCurrent || checkoutMutation.isPending}
+                    className={`w-full py-3 rounded-xl text-xs font-semibold transition-all ${
+                      isCurrent
+                        ? 'bg-white/10 text-gray-400 cursor-default'
+                        : card.isPopular
+                        ? 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white shadow-lg hover:opacity-90'
+                        : 'bg-voltrix-card hover:bg-voltrix-card-hover text-white border border-voltrix-border hover:border-voltrix-cyan'
+                    }`}
+                  >
+                    {isCurrent ? 'Current Plan' : `Upgrade to ${card.displayName}`}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

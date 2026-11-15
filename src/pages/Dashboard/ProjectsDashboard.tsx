@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   FolderPlus,
   Zap,
@@ -17,11 +17,14 @@ import {
   X,
 } from 'lucide-react';
 import { projectsApi, ProjectSummary, ProjectRole } from '../../api/workspace';
+import { billingApi, SubscriptionData } from '../../api/billing';
+import { ApiError } from '../../api/client';
 import { ParticleBackground } from '../../components/canvas/ParticleBackground';
 import { toast } from 'sonner';
 
 export const ProjectsDashboard: React.FC = () => {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals state
@@ -45,18 +48,55 @@ export const ProjectsDashboard: React.FC = () => {
     queryFn: projectsApi.getProjects,
   });
 
+  // Fetch current subscription
+  const { data: subData, isError: isSubError } = useQuery<SubscriptionData>({
+    queryKey: ['subscription'],
+    queryFn: billingApi.getSubscription,
+  });
+
+  // Derived values for plan limits:
+  // Count owned projects (role === 'OWNER')
+  const ownedProjects = projects.filter((p) => p.role === 'OWNER');
+  const maxProjects = subData?.plan?.maxProjects;
+
+  // If subscription request failed or maxProjects is null, hide the counter and do not disable Create
+  const showLimitCounter = !isSubError && subData?.plan != null && maxProjects != null;
+  const isAtLimit = showLimitCounter && ownedProjects.length >= maxProjects;
+
   // Create project mutation
   const createMutation = useMutation({
     mutationFn: (name: string) => projectsApi.createProject(name),
-    onSuccess: () => {
+    onSuccess: (data) => {
       toast.success('Project created successfully!');
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setIsCreateOpen(false);
       setNewProjectName('');
+      if (data?.id) {
+        navigate(`/projects/${data.id}`);
+      }
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to create project';
-      toast.error(msg);
+      if (err instanceof ApiError) {
+        if (err.status === 400) {
+          toast.error(err.message || 'Project limit reached for your current plan.', {
+            action: {
+              label: 'Upgrade',
+              onClick: () => navigate('/billing'),
+            },
+          });
+          return;
+        }
+        if (err.status === 401) {
+          // Handled by client interceptor
+          return;
+        }
+        if (err.message === 'Unexpected empty response') {
+          toast.error('Unexpected empty response from server.');
+          return;
+        }
+      }
+      toast.error('Something went wrong, please try again');
+      // Keep form open so user does not lose input
     },
   });
 
@@ -69,7 +109,8 @@ export const ProjectsDashboard: React.FC = () => {
       setEditingProject(null);
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to rename project';
+      const msg =
+        (err as { message?: string })?.message || 'Failed to rename project';
       toast.error(msg);
     },
   });
@@ -83,7 +124,8 @@ export const ProjectsDashboard: React.FC = () => {
       setDeletingProject(null);
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Failed to delete project';
+      const msg =
+        (err as { message?: string })?.message || 'Failed to delete project';
       toast.error(msg);
     },
   });
@@ -147,23 +189,33 @@ export const ProjectsDashboard: React.FC = () => {
           <div>
             <h1 className="font-display text-3xl font-bold text-white tracking-tight flex items-center gap-3">
               Projects Workspace
-              <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full bg-voltrix-card border border-voltrix-border text-voltrix-cyan">
-                {projects.length} {projects.length === 1 ? 'project' : 'projects'}
-              </span>
+              {showLimitCounter && (
+                <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full bg-voltrix-card border border-voltrix-border text-voltrix-cyan">
+                  {ownedProjects.length} / {maxProjects} projects
+                </span>
+              )}
             </h1>
             <p className="text-xs text-voltrix-muted mt-1">
               Select a project to enter the AI code editor or launch a new application.
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-end gap-1.5">
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2"
+              disabled={isAtLimit}
+              className={`px-4 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2 ${
+                isAtLimit ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               <FolderPlus className="w-4 h-4" />
               <span>New Project</span>
             </button>
+            {isAtLimit && (
+              <Link to="/billing" className="text-xs text-voltrix-cyan hover:underline">
+                Upgrade plan
+              </Link>
+            )}
           </div>
         </div>
 
@@ -226,7 +278,10 @@ export const ProjectsDashboard: React.FC = () => {
             </p>
             <button
               onClick={() => setIsCreateOpen(true)}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold shadow-lg hover:scale-105 transition-all inline-flex items-center gap-2"
+              disabled={isAtLimit}
+              className={`px-5 py-2.5 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold shadow-lg hover:scale-105 transition-all inline-flex items-center gap-2 ${
+                isAtLimit ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               <FolderPlus className="w-4 h-4" />
               Create First Project
@@ -336,36 +391,55 @@ export const ProjectsDashboard: React.FC = () => {
               Name your project workspace. Voltrix AI will initialize your file system structure.
             </p>
 
-            <form onSubmit={handleCreateSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">PROJECT NAME</label>
-                <input
-                  type="text"
-                  value={newProjectName}
-                  onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="e.g. Voltrix SaaS Dashboard"
-                  className="w-full bg-[#0D0E15] border border-voltrix-border rounded-xl px-4 py-2.5 text-sm text-white focus:border-voltrix-cyan focus:outline-none"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
+            {isAtLimit ? (
+              <div className="text-center py-4">
+                <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto mb-3" />
+                <p className="text-sm text-white font-medium mb-1">
+                  You've reached the maximum of {subData?.plan?.maxProjects} projects on your {subData?.plan?.name} plan.
+                </p>
+                <p className="text-xs text-voltrix-muted mb-5">
+                  Upgrade your plan on the Billing page to create additional projects.
+                </p>
+                <Link
+                  to="/billing"
                   onClick={() => setIsCreateOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white"
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold hover:opacity-90 transition-opacity"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={createMutation.isPending}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold hover:opacity-90 transition-opacity"
-                >
-                  {createMutation.isPending ? 'Creating...' : 'Initialize Project'}
-                </button>
+                  Upgrade Plan
+                </Link>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handleCreateSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">PROJECT NAME</label>
+                  <input
+                    type="text"
+                    value={newProjectName}
+                    onChange={(e) => setNewProjectName(e.target.value)}
+                    placeholder="e.g. Voltrix SaaS Dashboard"
+                    className="w-full bg-[#0D0E15] border border-voltrix-border rounded-xl px-4 py-2.5 text-sm text-white focus:border-voltrix-cyan focus:outline-none"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={createMutation.isPending}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {createMutation.isPending ? 'Creating...' : 'Initialize Project'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

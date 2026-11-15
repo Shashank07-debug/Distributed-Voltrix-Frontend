@@ -1,4 +1,4 @@
-import { workspaceApi } from './client';
+import { workspaceApi, ApiError } from './client';
 
 export type ProjectRole = 'OWNER' | 'EDITOR' | 'VIEWER';
 
@@ -45,6 +45,9 @@ export const projectsApi = {
 
   createProject: async (name: string): Promise<Project> => {
     const response = await workspaceApi.post<Project>('/projects', { name });
+    if (!response.data || typeof response.data !== 'object' || !response.data.id) {
+      throw new ApiError(response.status, 'Unexpected empty response');
+    }
     return response.data;
   },
 

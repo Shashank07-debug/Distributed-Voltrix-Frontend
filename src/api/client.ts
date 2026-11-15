@@ -3,9 +3,18 @@ import { VITE_API_BASE_URL, ACCOUNT_PREFIX, WORKSPACE_PREFIX, INTELLIGENCE_PREFI
 import { useAuthStore } from '../store/useAuthStore';
 import { toast } from 'sonner';
 
-/**
- * Helper to create an Axios instance configured for a specific Gateway service prefix.
- */
+export class ApiError extends Error {
+  status: number;
+  code?: string;
+
+  constructor(status: number, message: string, code?: string) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 const createServiceClient = (prefix: string): AxiosInstance => {
   const instance = axios.create({
     baseURL: `${VITE_API_BASE_URL}${prefix}`,
@@ -14,12 +23,10 @@ const createServiceClient = (prefix: string): AxiosInstance => {
     },
   });
 
-  // Request Interceptor: Attach Authorization Bearer token unless auth endpoint
   instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
       const url = config.url || '';
       const isPublicAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/signup');
-
       if (!isPublicAuthEndpoint) {
         const token = useAuthStore.getState().token;
         if (token) {
@@ -31,26 +38,51 @@ const createServiceClient = (prefix: string): AxiosInstance => {
     (error) => Promise.reject(error)
   );
 
-  // Response Interceptor: Handle 401, 403, 404, 429 errors globally
   instance.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      // 204 No Content has no body by HTTP specification
+      if (response.status === 204) {
+        return response;
+      }
+
+      const contentType = String(response.headers['content-type'] || '');
+      const isJsonResponse = contentType.includes('application/json');
+      const isTextRequest = response.config.responseType === 'text';
+
+      // Check empty body only when JSON is expected
+      if (isJsonResponse && !isTextRequest) {
+        if (response.data === null || response.data === undefined || response.data === '') {
+          return Promise.reject(
+            new ApiError(response.status, 'Unexpected empty response')
+          );
+        }
+      }
+
+      return response;
+    },
     (error) => {
+      if (error instanceof ApiError) {
+        return Promise.reject(error);
+      }
+
       if (error.response) {
         const status = error.response.status;
-        const message = error.response.data?.message || error.response.data?.error || 'An unexpected error occurred';
+        const message =
+          error.response.data?.message ||
+          error.response.data?.error ||
+          'An unexpected error occurred';
+        const code = error.response.data?.code;
 
         if (status === 401) {
-          // Clear authentication state and redirect to login
           useAuthStore.getState().logout();
           toast.error('Session expired. Please log in again.');
           if (window.location.pathname !== '/login' && window.location.pathname !== '/signup') {
             window.location.href = '/login';
           }
-        } else if (status === 403) {
-          toast.error('Access Denied: You do not have permission to perform this action.');
-        } else if (status === 404) {
-          toast.error(`Resource Not Found: ${message}`);
-        } else if (status === 429) {
+          return Promise.reject(new ApiError(401, 'Session expired. Please log in again.', code));
+        }
+
+        if (status === 429) {
           toast.error('Token limit exceeded or rate limited. Upgrade your plan on Billing to continue.', {
             action: {
               label: 'Upgrade Plan',
@@ -60,10 +92,19 @@ const createServiceClient = (prefix: string): AxiosInstance => {
             },
           });
         }
-      } else if (error.request) {
-        toast.error('Network Error: Unable to reach the Voltrix Gateway server.');
+
+        return Promise.reject(new ApiError(status, message, code));
       }
-      return Promise.reject(error);
+
+      if (error.request) {
+        return Promise.reject(
+          new ApiError(0, 'Network Error: Unable to reach the Voltrix Gateway server.')
+        );
+      }
+
+      return Promise.reject(
+        new ApiError(0, error.message || 'An unexpected error occurred')
+      );
     }
   );
 

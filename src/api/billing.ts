@@ -3,17 +3,17 @@ import { accountApi } from './client';
 export interface PlanInfo {
   id: number;
   name: string;
-  maxProjects: number | string;
-  maxTokensPerDay: number;
+  maxProjects: number | null;
+  maxTokensPerDay: number | null;
   unlimitedAi: boolean;
-  price?: number | string;
+  price: string;
 }
 
 export interface SubscriptionData {
-  plan: PlanInfo;
+  plan: PlanInfo | null;
   status: 'ACTIVE' | 'CANCELED' | 'PAST_DUE' | 'TRIALING';
-  periodEnd: string;
-  tokenUsedThisCycle: number;
+  periodEnd?: string;
+  tokenUsedThisCycle?: number;
 }
 
 export interface CheckoutResponse {
