@@ -9,7 +9,7 @@
  */
 
 export interface PricingCardDisplay {
-  id: number;
+  id: number | null;
   name: string; // Internal name / code: 'FREE' | 'PRO' | 'BUSINESS'
   displayName: string;
   priceMonthly: number;
@@ -21,11 +21,10 @@ export interface PricingCardDisplay {
 
 export const PRICING_DISPLAY: PricingCardDisplay[] = [
   {
-    // TODO: Ensure id: 1 matches the backend plan table ID for Free plan
-    id: 1,
+    // Free tier has no payable database ID (not subscribed via Stripe checkout)
+    id: null,
     name: 'FREE',
     displayName: 'Free',
-    // TODO: Free tier monthly cost (0 INR) - must match backend plan table
     priceMonthly: 0,
     billingCycle: 'forever',
     description: 'For hobbyists exploring AI-powered rapid prototyping.',
@@ -35,11 +34,10 @@ export const PRICING_DISPLAY: PricingCardDisplay[] = [
     ],
   },
   {
-    // TODO: Ensure id: 2 matches the backend plan table ID for Pro plan
-    id: 2,
+    // Matches backend database plan table ID for Pro plan (₹399 INR)
+    id: 1,
     name: 'PRO',
     displayName: 'Pro',
-    // TODO: Pro tier monthly cost (399 INR) - must match backend plan table & Stripe charge
     priceMonthly: 399,
     billingCycle: 'per month',
     description: 'For professional developers and fast-moving solo founders.',
@@ -51,11 +49,10 @@ export const PRICING_DISPLAY: PricingCardDisplay[] = [
     ],
   },
   {
-    // TODO: Ensure id: 3 matches the backend plan table ID for Business plan
-    id: 3,
+    // Matches backend database plan table ID for Business plan (₹699 INR)
+    id: 2,
     name: 'BUSINESS',
     displayName: 'Business',
-    // TODO: Business tier monthly cost (699 INR) - must match backend plan table & Stripe charge
     priceMonthly: 699,
     billingCycle: 'per month',
     description: 'For agencies and scaling dev teams needing high-performance AI execution.',

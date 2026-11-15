@@ -32,6 +32,8 @@ export const BillingPage: React.FC = () => {
     onSuccess: (data) => {
       if (data?.url) {
         window.location.href = data.url;
+      } else {
+        toast.error('Failed to retrieve checkout URL.');
       }
     },
     onError: (err: unknown) => {
@@ -48,6 +50,8 @@ export const BillingPage: React.FC = () => {
     onSuccess: (data) => {
       if (data?.portalUrl) {
         window.location.href = data.portalUrl;
+      } else {
+        toast.error('Failed to retrieve billing portal URL.');
       }
     },
     onError: (err: unknown) => {
@@ -72,6 +76,17 @@ export const BillingPage: React.FC = () => {
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams, refetch]);
+
+  const handleCheckout = (e: React.MouseEvent, card: PricingCardDisplay) => {
+    e.stopPropagation();
+
+    if (card.id == null) {
+      toast.error('No checkout available for this plan.');
+      return;
+    }
+
+    checkoutMutation.mutate(card.id);
+  };
 
   // Current plan details from API only
   const currentPlan = subData?.plan;
@@ -231,10 +246,15 @@ export const BillingPage: React.FC = () => {
         {!isLoading && !isError && currentPlan && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {PRICING_DISPLAY.map((card: PricingCardDisplay) => {
-              // Current plan check based on API plan name (case-insensitive) or id
-              const isCurrent =
-                currentPlan.name?.toUpperCase() === card.name.toUpperCase() ||
-                currentPlan.id === card.id;
+              // Current plan check based on API plan id or normalized name
+              const isCurrent = Boolean(
+                (currentPlan.id != null && card.id != null && currentPlan.id === card.id) ||
+                (currentPlan.name && (
+                  currentPlan.name.toUpperCase() === card.name.toUpperCase() ||
+                  currentPlan.name.toUpperCase().includes(card.name.toUpperCase()) ||
+                  (card.name === 'BUSINESS' && currentPlan.name.toUpperCase().includes('BUISNESS'))
+                ))
+              );
 
               // Build feature bullets:
               // For the CURRENT plan, generate bullets with real numbers from API data
@@ -255,7 +275,7 @@ export const BillingPage: React.FC = () => {
 
               return (
                 <div
-                  key={card.id}
+                  key={card.name}
                   className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
                     card.isPopular
                       ? 'bg-gradient-to-b from-[#141622] to-[#0D0E15] border-2 border-voltrix-violet shadow-[0_0_40px_rgba(139,92,246,0.2)] scale-105'
@@ -290,17 +310,22 @@ export const BillingPage: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => checkoutMutation.mutate(card.id)}
-                    disabled={isCurrent || checkoutMutation.isPending}
+                    type="button"
+                    onClick={(e) => handleCheckout(e, card)}
+                    disabled={isCurrent || checkoutMutation.isPending || card.id == null}
                     className={`w-full py-3 rounded-xl text-xs font-semibold transition-all ${
                       isCurrent
                         ? 'bg-white/10 text-gray-400 cursor-default'
                         : card.isPopular
-                        ? 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white shadow-lg hover:opacity-90'
-                        : 'bg-voltrix-card hover:bg-voltrix-card-hover text-white border border-voltrix-border hover:border-voltrix-cyan'
+                        ? 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white shadow-lg hover:opacity-90 disabled:opacity-50'
+                        : 'bg-voltrix-card hover:bg-voltrix-card-hover text-white border border-voltrix-border hover:border-voltrix-cyan disabled:opacity-50'
                     }`}
                   >
-                    {isCurrent ? 'Current Plan' : `Upgrade to ${card.displayName}`}
+                    {isCurrent
+                      ? 'Current Plan'
+                      : checkoutMutation.isPending && checkoutMutation.variables === card.id
+                      ? 'Preparing Checkout...'
+                      : `Upgrade to ${card.displayName}`}
                   </button>
                 </div>
               );
