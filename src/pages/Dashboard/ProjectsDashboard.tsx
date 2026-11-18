@@ -179,32 +179,32 @@ export const ProjectsDashboard: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] bg-[#070709] px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
+    <div className="relative min-h-dvh bg-surface-base px-4 sm:px-6 lg:px-8 py-6 sm:py-8 overflow-hidden">
       {/* 3D Particle Ambient Background */}
       <ParticleBackground />
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Top Title Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold text-white tracking-tight flex items-center gap-3">
-              Projects Workspace
+            <h1 className="font-sans text-2xl sm:text-3xl font-bold text-text-primary tracking-tight flex flex-wrap items-center gap-2 sm:gap-3">
+              <span>Projects Workspace</span>
               {showLimitCounter && (
-                <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full bg-voltrix-card border border-voltrix-border text-voltrix-cyan">
+                <span className="text-xs font-mono font-normal px-2.5 py-1 rounded-full bg-surface-panel border border-border-subtle text-accent-teal">
                   {ownedProjects.length} / {maxProjects} projects
                 </span>
               )}
             </h1>
-            <p className="text-xs text-voltrix-muted mt-1">
+            <p className="text-xs text-text-secondary mt-1">
               Select a project to enter the AI code editor or launch a new application.
             </p>
           </div>
 
-          <div className="flex flex-col items-end gap-1.5">
+          <div className="flex flex-col sm:items-end gap-1.5 w-full sm:w-auto">
             <button
               onClick={() => setIsCreateOpen(true)}
               disabled={isAtLimit}
-              className={`px-4 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold shadow-[0_0_20px_rgba(139,92,246,0.3)] hover:shadow-[0_0_30px_rgba(6,182,212,0.4)] transition-all flex items-center gap-2 ${
+              className={`h-11 px-5 rounded-xl bg-text-primary text-surface-base hover:bg-white text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 w-full sm:w-auto ${
                 isAtLimit ? 'opacity-50 cursor-not-allowed' : ''
               }`}
             >
@@ -212,7 +212,7 @@ export const ProjectsDashboard: React.FC = () => {
               <span>New Project</span>
             </button>
             {isAtLimit && (
-              <Link to="/billing" className="text-xs text-voltrix-cyan hover:underline">
+              <Link to="/billing" className="text-xs text-accent-teal hover:underline text-center sm:text-right">
                 Upgrade plan
               </Link>
             )}
@@ -220,14 +220,14 @@ export const ProjectsDashboard: React.FC = () => {
         </div>
 
         {/* Filter Search Bar */}
-        <div className="relative max-w-md mb-8">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-voltrix-muted" />
+        <div className="relative w-full max-w-md mb-6 sm:mb-8">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search projects by name..."
-            className="w-full bg-voltrix-card/80 border border-voltrix-border rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-gray-500 focus:border-voltrix-cyan focus:outline-none transition-all"
+            className="w-full h-11 bg-surface-panel border border-border-subtle rounded-xl pl-10 pr-4 text-base lg:text-xs text-text-primary placeholder:text-text-tertiary focus:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal transition-all"
           />
         </div>
 
@@ -313,7 +313,8 @@ export const ProjectsDashboard: React.FC = () => {
                           e.preventDefault();
                           setActiveMenuId(activeMenuId === project.id ? null : project.id);
                         }}
-                        className="p-1.5 rounded-lg text-voltrix-muted hover:text-white hover:bg-white/5 transition-colors"
+                        aria-label="Project actions"
+                        className="w-11 h-11 flex items-center justify-center rounded-lg text-voltrix-muted hover:text-white hover:bg-white/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal"
                       >
                         <MoreVertical className="w-4 h-4" />
                       </button>
@@ -362,7 +363,7 @@ export const ProjectsDashboard: React.FC = () => {
 
                   <Link
                     to={`/projects/${project.id}`}
-                    className="inline-flex items-center gap-1 font-semibold text-voltrix-cyan hover:text-white transition-colors"
+                    className="min-h-[44px] inline-flex items-center gap-1 font-semibold text-voltrix-cyan hover:text-white transition-colors"
                   >
                     Open Workspace <ExternalLink className="w-3 h-3" />
                   </Link>
@@ -375,35 +376,36 @@ export const ProjectsDashboard: React.FC = () => {
 
       {/* New Project Modal */}
       {isCreateOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-2xl glass-panel border border-voltrix-border shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md p-5 sm:p-6 rounded-2xl bg-surface-panel border border-border-subtle shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setIsCreateOpen(false)}
-              className="absolute top-4 right-4 text-voltrix-muted hover:text-white"
+              aria-label="Close dialog"
+              className="w-11 h-11 flex items-center justify-center rounded-lg absolute top-2 right-2 text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="font-display text-xl font-bold text-white mb-1 flex items-center gap-2">
-              <Zap className="w-5 h-5 text-voltrix-cyan" /> Create New Project
+            <h2 className="font-sans text-xl font-bold text-text-primary mb-1 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-accent-teal" /> Create New Project
             </h2>
-            <p className="text-xs text-voltrix-muted mb-5">
+            <p className="text-xs text-text-secondary mb-5">
               Name your project workspace. Voltrix AI will initialize your file system structure.
             </p>
 
             {isAtLimit ? (
               <div className="text-center py-4">
                 <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto mb-3" />
-                <p className="text-sm text-white font-medium mb-1">
+                <p className="text-sm text-text-primary font-medium mb-1">
                   You've reached the maximum of {subData?.plan?.maxProjects} projects on your {subData?.plan?.name} plan.
                 </p>
-                <p className="text-xs text-voltrix-muted mb-5">
+                <p className="text-xs text-text-secondary mb-5">
                   Upgrade your plan on the Billing page to create additional projects.
                 </p>
                 <Link
                   to="/billing"
                   onClick={() => setIsCreateOpen(false)}
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl bg-text-primary text-surface-base hover:bg-white text-xs sm:text-sm font-semibold transition-colors"
                 >
                   Upgrade Plan
                 </Link>
@@ -411,13 +413,14 @@ export const ProjectsDashboard: React.FC = () => {
             ) : (
               <form onSubmit={handleCreateSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">PROJECT NAME</label>
+                  <label htmlFor="create-project-name" className="block text-xs font-mono font-medium text-text-secondary mb-1.5">PROJECT NAME</label>
                   <input
+                    id="create-project-name"
                     type="text"
                     value={newProjectName}
                     onChange={(e) => setNewProjectName(e.target.value)}
                     placeholder="e.g. Voltrix SaaS Dashboard"
-                    className="w-full bg-[#0D0E15] border border-voltrix-border rounded-xl px-4 py-2.5 text-sm text-white focus:border-voltrix-cyan focus:outline-none"
+                    className="w-full h-11 bg-surface-base border border-border-subtle rounded-xl px-4 text-base lg:text-sm text-text-primary focus:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal"
                     autoFocus
                   />
                 </div>
@@ -426,14 +429,14 @@ export const ProjectsDashboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setIsCreateOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white"
+                    className="h-11 px-4 rounded-xl text-xs sm:text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={createMutation.isPending}
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                    className="h-11 px-5 rounded-xl bg-text-primary text-surface-base hover:bg-white text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center"
                   >
                     {createMutation.isPending ? 'Creating...' : 'Initialize Project'}
                   </button>
@@ -446,25 +449,27 @@ export const ProjectsDashboard: React.FC = () => {
 
       {/* Rename Project Modal */}
       {editingProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-2xl glass-panel border border-voltrix-border shadow-2xl relative">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md p-5 sm:p-6 rounded-2xl bg-surface-panel border border-border-subtle shadow-2xl relative">
             <button
               onClick={() => setEditingProject(null)}
-              className="absolute top-4 right-4 text-voltrix-muted hover:text-white"
+              aria-label="Close dialog"
+              className="w-11 h-11 flex items-center justify-center rounded-lg absolute top-2 right-2 text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <h2 className="font-display text-xl font-bold text-white mb-4">Rename Project</h2>
+            <h2 className="font-sans text-xl font-bold text-text-primary mb-4">Rename Project</h2>
 
             <form onSubmit={handleRenameSubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-mono text-gray-300 mb-1">PROJECT NAME</label>
+                <label htmlFor="rename-project-name" className="block text-xs font-mono font-medium text-text-secondary mb-1.5">PROJECT NAME</label>
                 <input
+                  id="rename-project-name"
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-[#0D0E15] border border-voltrix-border rounded-xl px-4 py-2 text-sm text-white focus:border-voltrix-cyan focus:outline-none"
+                  className="w-full h-11 bg-surface-base border border-border-subtle rounded-xl px-4 text-base lg:text-sm text-text-primary focus:border-border-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal"
                 />
               </div>
 
@@ -472,14 +477,14 @@ export const ProjectsDashboard: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setEditingProject(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white"
+                  className="h-11 px-4 rounded-xl text-xs sm:text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updateMutation.isPending}
-                  className="px-5 py-2 rounded-xl bg-voltrix-cyan text-black text-xs font-semibold hover:bg-voltrix-cyan-light"
+                  className="h-11 px-5 rounded-xl bg-text-primary text-surface-base hover:bg-white text-xs sm:text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center"
                 >
                   {updateMutation.isPending ? 'Saving...' : 'Save Name'}
                 </button>
@@ -491,14 +496,14 @@ export const ProjectsDashboard: React.FC = () => {
 
       {/* Delete Confirmation Modal (OWNER Only) */}
       {deletingProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-md p-6 rounded-2xl glass-panel border border-rose-500/30 shadow-2xl relative">
-            <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mb-4 text-rose-400">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-md p-5 sm:p-6 rounded-2xl bg-surface-panel border border-status-danger/30 shadow-2xl relative">
+            <div className="w-12 h-12 rounded-xl bg-status-danger/10 border border-status-danger/30 flex items-center justify-center mb-4 text-status-danger">
               <AlertTriangle className="w-6 h-6" />
             </div>
 
-            <h2 className="font-display text-lg font-bold text-white mb-1">Delete "{deletingProject.name}"?</h2>
-            <p className="text-xs text-voltrix-muted mb-6">
+            <h2 className="font-sans text-lg font-bold text-text-primary mb-1">Delete "{deletingProject.name}"?</h2>
+            <p className="text-xs text-text-secondary mb-6 leading-relaxed">
               This action cannot be undone. All project files, chat history, and member access will be permanently purged.
             </p>
 
@@ -506,7 +511,7 @@ export const ProjectsDashboard: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setDeletingProject(null)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-gray-400 hover:text-white"
+                className="h-11 px-4 rounded-xl text-xs sm:text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface-raised transition-colors"
               >
                 Cancel
               </button>
@@ -514,7 +519,7 @@ export const ProjectsDashboard: React.FC = () => {
                 type="button"
                 onClick={handleDeleteConfirm}
                 disabled={deleteMutation.isPending}
-                className="px-5 py-2 rounded-xl bg-rose-600 text-white text-xs font-semibold hover:bg-rose-500 shadow-lg shadow-rose-900/30"
+                className="h-11 px-5 rounded-xl bg-status-danger text-white text-xs sm:text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 flex items-center justify-center"
               >
                 {deleteMutation.isPending ? 'Deleting...' : 'Delete Project'}
               </button>

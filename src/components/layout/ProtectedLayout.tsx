@@ -11,7 +11,7 @@ export const ProtectedLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#070709]">
+    <div className="min-h-dvh flex flex-col bg-surface-base">
       <Navbar />
       <main className="flex-1">
         <Outlet />

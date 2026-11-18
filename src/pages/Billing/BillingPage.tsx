@@ -102,17 +102,17 @@ export const BillingPage: React.FC = () => {
       : Math.min(100, Math.round((usedTokens / maxTokens) * 100));
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[#070709] px-4 sm:px-6 lg:px-8 py-12">
+    <div className="min-h-dvh bg-surface-base px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-voltrix-violet/10 border border-voltrix-violet/30 text-voltrix-cyan text-xs font-mono mb-4">
-            <Sparkles className="w-3.5 h-3.5" /> Autonomous AI Execution Quotas
+        <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-12">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-raised border border-border-subtle text-text-secondary text-xs font-mono mb-4">
+            <Sparkles className="w-3.5 h-3.5 text-accent-teal" /> Autonomous AI Execution Quotas
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3">
+          <h1 className="font-sans text-2xl sm:text-4xl font-bold text-text-primary tracking-tight mb-3">
             Flexible Plans for High-Voltage Developers
           </h1>
-          <p className="text-xs sm:text-sm text-voltrix-muted">
+          <p className="text-xs sm:text-sm text-text-secondary leading-relaxed">
             Scale your AI generation tokens, team workspace seats, and cloud deployment pipelines effortlessly.
           </p>
         </div>
@@ -167,14 +167,12 @@ export const BillingPage: React.FC = () => {
 
         {/* Current Active Plan Status Banner */}
         {!isLoading && !isError && currentPlan && (
-          <div className="mb-12 p-6 sm:p-8 rounded-3xl glass-panel border border-voltrix-border relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-80 h-80 bg-voltrix-violet/10 blur-[100px] pointer-events-none" />
-
+          <div className="mb-8 sm:mb-12 p-5 sm:p-8 rounded-2xl sm:rounded-3xl bg-surface-panel border border-border-subtle relative overflow-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="font-display text-xl font-bold text-white">
-                    Current Plan: <span className="text-voltrix-cyan">{currentPlan.name}</span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2.5 mb-2">
+                  <h2 className="font-sans text-lg sm:text-xl font-bold text-text-primary">
+                    Current Plan: <span className="text-accent-teal">{currentPlan.name}</span>
                   </h2>
                   {isPlanActive && (
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
@@ -187,43 +185,43 @@ export const BillingPage: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-voltrix-muted">
+                <p className="text-xs text-text-secondary">
                   Period End:{' '}
                   {subData?.periodEnd
                     ? new Date(subData.periodEnd).toLocaleDateString()
                     : 'N/A'}
                 </p>
                 {currentPlan.maxProjects != null && (
-                  <p className="text-xs text-voltrix-muted mt-1 font-mono">
-                    Project Allowance: <span className="text-white font-semibold">{currentPlan.maxProjects}</span> active projects
+                  <p className="text-xs text-text-secondary mt-1 font-mono">
+                    Project Allowance: <span className="text-text-primary font-semibold">{currentPlan.maxProjects}</span> active projects
                   </p>
                 )}
               </div>
 
               {/* Token Usage Progress Bar or Unlimited Badge */}
-              <div className="w-full md:w-80 space-y-2">
+              <div className="w-full md:w-80 space-y-2 shrink-0">
                 <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="text-gray-300">Daily Token Usage</span>
+                  <span className="text-text-secondary">Daily Token Usage</span>
                   {isUnlimitedAi ? (
-                    <span className="text-voltrix-cyan font-bold">UNLIMITED AI</span>
+                    <span className="text-accent-teal font-bold">UNLIMITED AI</span>
                   ) : maxTokens != null ? (
-                    <span className="text-voltrix-violet-light">
+                    <span className="text-text-primary">
                       {usedTokens.toLocaleString()} / {maxTokens.toLocaleString()}
                     </span>
                   ) : (
-                    <span className="text-voltrix-violet-light">
+                    <span className="text-text-primary">
                       {usedTokens.toLocaleString()} tokens used
                     </span>
                   )}
                 </div>
 
                 {!isUnlimitedAi && maxTokens != null && (
-                  <div className="w-full h-2 rounded-full bg-voltrix-card border border-white/10 overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-surface-base border border-border-subtle overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 rounded-full ${
                         usagePercentage > 90
                           ? 'bg-rose-500'
-                          : 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan'
+                          : 'bg-accent-teal'
                       }`}
                       style={{ width: `${usagePercentage}%` }}
                     />
@@ -233,9 +231,9 @@ export const BillingPage: React.FC = () => {
                 <button
                   onClick={() => portalMutation.mutate()}
                   disabled={portalMutation.isPending}
-                  className="mt-2 text-xs font-semibold text-voltrix-cyan hover:underline inline-flex items-center gap-1"
+                  className="mt-2 min-h-[44px] text-xs font-semibold text-accent-teal hover:underline inline-flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal rounded"
                 >
-                  <CreditCard className="w-3.5 h-3.5" /> Manage Billing Portal <ArrowUpRight className="w-3.5 h-3.5" />
+                  <CreditCard className="w-4 h-4" /> Manage Billing Portal <ArrowUpRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -244,7 +242,7 @@ export const BillingPage: React.FC = () => {
 
         {/* Pricing Cards Grid */}
         {!isLoading && !isError && currentPlan && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
             {PRICING_DISPLAY.map((card: PricingCardDisplay) => {
               // Current plan check based on API plan id or normalized name
               const isCurrent = Boolean(
@@ -276,33 +274,33 @@ export const BillingPage: React.FC = () => {
               return (
                 <div
                   key={card.name}
-                  className={`relative rounded-3xl p-8 flex flex-col justify-between transition-all duration-300 ${
+                  className={`relative rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col justify-between transition-all duration-300 ${
                     card.isPopular
-                      ? 'bg-gradient-to-b from-[#141622] to-[#0D0E15] border-2 border-voltrix-violet shadow-[0_0_40px_rgba(139,92,246,0.2)] scale-105'
-                      : 'glass-panel border border-voltrix-border hover:border-white/20'
+                      ? 'bg-surface-panel border-2 border-accent-teal/50 md:scale-105 shadow-xl'
+                      : 'bg-surface-panel border border-border-subtle hover:border-border-hover'
                   }`}
                 >
                   {card.isPopular && (
-                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white text-[10px] font-mono font-bold tracking-wider uppercase shadow-md">
+                    <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-accent-teal text-surface-base text-[10px] font-mono font-bold tracking-wider uppercase shadow-md">
                       Most Popular
                     </div>
                   )}
 
                   <div>
-                    <h3 className="font-display text-xl font-bold text-white mb-2">{card.displayName}</h3>
-                    <p className="text-xs text-voltrix-muted mb-6 leading-relaxed">{card.description}</p>
+                    <h3 className="font-sans text-xl font-bold text-text-primary mb-2">{card.displayName}</h3>
+                    <p className="text-xs text-text-secondary mb-6 leading-relaxed">{card.description}</p>
 
                     <div className="mb-6">
-                      <span className="font-display text-4xl font-bold text-white">
+                      <span className="font-sans text-3xl sm:text-4xl font-bold text-text-primary">
                         {currencyFormatter.format(card.priceMonthly)}
                       </span>
-                      <span className="text-xs text-voltrix-muted ml-1 font-mono">/ {card.billingCycle}</span>
+                      <span className="text-xs text-text-secondary ml-1 font-mono">/ {card.billingCycle}</span>
                     </div>
 
                     <ul className="space-y-3 mb-8">
                       {allFeatures.map((feat, idx) => (
-                        <li key={idx} className="flex items-center gap-2.5 text-xs text-gray-300">
-                          <Check className="w-4 h-4 text-voltrix-cyan shrink-0" />
+                        <li key={idx} className="flex items-start gap-2.5 text-xs text-text-secondary">
+                          <Check className="w-4 h-4 text-accent-teal shrink-0 mt-0.5" />
                           <span>{feat}</span>
                         </li>
                       ))}
@@ -313,12 +311,12 @@ export const BillingPage: React.FC = () => {
                     type="button"
                     onClick={(e) => handleCheckout(e, card)}
                     disabled={isCurrent || checkoutMutation.isPending || card.id == null}
-                    className={`w-full py-3 rounded-xl text-xs font-semibold transition-all ${
+                    className={`w-full h-11 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal ${
                       isCurrent
-                        ? 'bg-white/10 text-gray-400 cursor-default'
+                        ? 'bg-surface-raised text-text-tertiary cursor-default border border-border-subtle'
                         : card.isPopular
-                        ? 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white shadow-lg hover:opacity-90 disabled:opacity-50'
-                        : 'bg-voltrix-card hover:bg-voltrix-card-hover text-white border border-voltrix-border hover:border-voltrix-cyan disabled:opacity-50'
+                        ? 'bg-text-primary text-surface-base hover:bg-white disabled:opacity-50'
+                        : 'bg-surface-raised hover:bg-surface-overlay text-text-primary border border-border-subtle hover:border-border-hover disabled:opacity-50'
                     }`}
                   >
                     {isCurrent

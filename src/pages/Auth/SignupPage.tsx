@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Zap, Mail, Lock, User as UserIcon, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { authApi } from '../../api/auth';
 import { useAuthStore } from '../../store/useAuthStore';
-import { AuthCanvas } from '../../components/canvas/AuthCanvas';
 import { toast } from 'sonner';
+import { AuthShell } from './AuthShell';
+import { OAuthButtons } from '../../components/auth/OAuthButtons';
 
 export const SignupPage: React.FC = () => {
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; username?: string; password?: string }>({});
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const setAuth = useAuthStore((state) => state.setAuth);
   const navigate = useNavigate();
@@ -43,6 +46,7 @@ export const SignupPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError(null);
     if (!validate()) return;
 
     setIsLoading(true);
@@ -56,7 +60,10 @@ export const SignupPage: React.FC = () => {
       toast.success(`Account created! Welcome to Voltrix, ${data.user.name}!`);
       navigate('/projects');
     } catch (err: unknown) {
-      const errorMsg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Registration failed. Try a different email.';
+      const errorMsg =
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        'Registration failed. Try a different email.';
+      setServerError(errorMsg);
       toast.error(errorMsg);
     } finally {
       setIsLoading(false);
@@ -64,106 +71,165 @@ export const SignupPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center bg-[#070709] px-4 py-12 overflow-hidden">
-      {/* 3D Background */}
-      <AuthCanvas />
+    <AuthShell
+      title="Create your account"
+      subtitle="Start building with autonomous code generation"
+      footerText="Already have an account?"
+      footerLinkText="Log in"
+      footerLinkTo="/login"
+      serverError={serverError}
+    >
+      {/* OAuth Action Buttons */}
+      <OAuthButtons isLoading={isLoading} />
 
-      {/* Glassmorphic Signup Card */}
-      <div className="relative z-10 w-full max-w-md p-8 rounded-3xl glass-panel shadow-[0_0_50px_rgba(6,182,212,0.15)] border border-voltrix-border">
-        <div className="flex flex-col items-center text-center mb-8">
-          <Link to="/" className="mb-4 inline-flex items-center gap-2 group">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-voltrix-cyan to-voltrix-violet p-0.5 shadow-lg group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-[#070709] rounded-[14px] flex items-center justify-center">
-                <Zap className="w-6 h-6 text-voltrix-violet" />
-              </div>
-            </div>
-          </Link>
-          <h1 className="font-display text-2xl font-bold text-white tracking-tight">Create Voltrix Account</h1>
-          <p className="text-xs text-voltrix-muted mt-1">Start building full-stack apps with autonomous AI</p>
+      {/* Decorative Divider with OR text */}
+      <div className="relative my-5 flex items-center justify-center" aria-hidden="true">
+        <div className="w-full border-t border-border-subtle" />
+        <span className="absolute bg-surface-panel px-3 text-[11px] font-medium text-text-tertiary uppercase tracking-wider">
+          OR
+        </span>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Full Name */}
+        <div>
+          <label
+            htmlFor="signup-name"
+            className="block text-xs font-medium text-text-secondary mb-1.5"
+          >
+            Full name
+          </label>
+          <input
+            id="signup-name"
+            name="name"
+            type="text"
+            autoComplete="name"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+              if (serverError) setServerError(null);
+            }}
+            placeholder="Alex Mercer"
+            aria-invalid={Boolean(errors.name)}
+            aria-describedby={errors.name ? 'signup-name-error' : undefined}
+            className={`w-full h-11 px-3.5 rounded-lg bg-surface-base border ${
+              errors.name
+                ? 'border-status-danger focus:border-status-danger'
+                : 'border-border-subtle focus:border-border-strong'
+            } text-base text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal transition-colors`}
+          />
+          {errors.name && (
+            <p id="signup-name-error" role="alert" className="text-xs text-status-danger mt-1.5">
+              {errors.name}
+            </p>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
-          <div>
-            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">FULL NAME</label>
-            <div className="relative">
-              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-voltrix-muted" />
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Alex Mercer"
-                className={`w-full bg-[#0D0E15]/90 border ${
-                  errors.name ? 'border-rose-500' : 'border-voltrix-border'
-                } rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-voltrix-cyan focus:ring-1 focus:ring-voltrix-cyan transition-all`}
-              />
-            </div>
-            {errors.name && <p className="text-xs text-rose-400 mt-1 font-mono">{errors.name}</p>}
-          </div>
+        {/* Email Address */}
+        <div>
+          <label
+            htmlFor="signup-username"
+            className="block text-xs font-medium text-text-secondary mb-1.5"
+          >
+            Email address
+          </label>
+          <input
+            id="signup-username"
+            name="username"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={username}
+            onChange={(e) => {
+              setUsername(e.target.value);
+              if (errors.username) setErrors((prev) => ({ ...prev, username: undefined }));
+              if (serverError) setServerError(null);
+            }}
+            placeholder="alex@voltrix.ai"
+            aria-invalid={Boolean(errors.username)}
+            aria-describedby={errors.username ? 'signup-username-error' : undefined}
+            className={`w-full h-11 px-3.5 rounded-lg bg-surface-base border ${
+              errors.username
+                ? 'border-status-danger focus:border-status-danger'
+                : 'border-border-subtle focus:border-border-strong'
+            } text-base text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal transition-colors`}
+          />
+          {errors.username && (
+            <p id="signup-username-error" role="alert" className="text-xs text-status-danger mt-1.5">
+              {errors.username}
+            </p>
+          )}
+        </div>
 
-          {/* Email */}
-          <div>
-            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">EMAIL ADDRESS</label>
-            <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-voltrix-muted" />
-              <input
-                type="email"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="alex@voltrix.ai"
-                className={`w-full bg-[#0D0E15]/90 border ${
-                  errors.username ? 'border-rose-500' : 'border-voltrix-border'
-                } rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-voltrix-cyan focus:ring-1 focus:ring-voltrix-cyan transition-all`}
-              />
-            </div>
-            {errors.username && <p className="text-xs text-rose-400 mt-1 font-mono">{errors.username}</p>}
+        {/* Password */}
+        <div>
+          <label
+            htmlFor="signup-password"
+            className="block text-xs font-medium text-text-secondary mb-1.5"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="signup-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+                if (serverError) setServerError(null);
+              }}
+              placeholder="••••••••"
+              aria-invalid={Boolean(errors.password)}
+              aria-describedby={errors.password ? 'signup-password-error' : undefined}
+              className={`w-full h-11 pl-3.5 pr-11 rounded-lg bg-surface-base border ${
+                errors.password
+                  ? 'border-status-danger focus:border-status-danger'
+                  : 'border-border-subtle focus:border-border-strong'
+              } text-base text-text-primary placeholder:text-text-tertiary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal transition-colors`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-text-tertiary hover:text-text-primary rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal transition-colors"
+            >
+              {showPassword ? (
+                <EyeOff className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <Eye className="w-4 h-4" aria-hidden="true" />
+              )}
+            </button>
           </div>
+          {errors.password && (
+            <p id="signup-password-error" role="alert" className="text-xs text-status-danger mt-1.5">
+              {errors.password}
+            </p>
+          )}
+        </div>
 
-          {/* Password */}
-          <div>
-            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">PASSWORD</label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-voltrix-muted" />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 4 characters"
-                className={`w-full bg-[#0D0E15]/90 border ${
-                  errors.password ? 'border-rose-500' : 'border-voltrix-border'
-                } rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-voltrix-cyan focus:ring-1 focus:ring-voltrix-cyan transition-all`}
-              />
-            </div>
-            {errors.password && <p className="text-xs text-rose-400 mt-1 font-mono">{errors.password}</p>}
-          </div>
-
-          {/* Submit Button */}
+        {/* Submit Button */}
+        <div className="pt-2">
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-voltrix-cyan via-voltrix-violet to-voltrix-cyan bg-[length:200%_auto] text-white text-sm font-semibold shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:shadow-[0_0_35px_rgba(139,92,246,0.4)] disabled:opacity-50 transition-all flex items-center justify-center gap-2 group mt-2"
+            className="w-full h-11 px-4 rounded-full bg-text-primary text-surface-base hover:bg-white text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-teal"
           >
             {isLoading ? (
               <span className="inline-flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                Creating Workspace...
+                <span className="w-4 h-4 border-2 border-surface-base border-t-transparent rounded-full animate-spin" />
+                Creating account...
               </span>
             ) : (
-              <>
-                <span>Create Developer Account</span>
-                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </>
+              'Create account'
             )}
           </button>
-        </form>
-
-        <div className="mt-6 text-center text-xs text-voltrix-muted border-t border-white/5 pt-4">
-          Already have an account?{' '}
-          <Link to="/login" className="text-voltrix-violet-light font-semibold hover:underline">
-            Sign In
-          </Link>
         </div>
-      </div>
-    </div>
+      </form>
+    </AuthShell>
   );
 };
