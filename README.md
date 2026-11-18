@@ -28,7 +28,7 @@ All API requests route through the Voltrix Centralized Gateway. Service routes a
 - `INTELLIGENCE_PREFIX` = `/api/v1/intelligence`
 
 ### Environment Variables & Vite Proxy Setup
-- **`VITE_API_BASE_URL`**: Defaults to `""` (empty string for same-origin dev proxy). In production, set this to your deployed gateway or ingress URL (e.g. `https://api.voltrix.ai`).
+- **`VITE_API_BASE_URL`**: Defaults to `""` (empty string for same-origin dev proxy). In production, set this to your deployed gateway or ingress URL (e.g. `https://api.voltrix.xyz`).
 - **Dev Server Proxy**: In `vite.config.ts`, `/api` requests are automatically proxied to `http://localhost:8082` (the local gateway target) to eliminate CORS during development.
 
 ---
