@@ -172,11 +172,11 @@ export const WorkspacePage: React.FC = () => {
   return (
     <div className="h-screen w-screen flex flex-col bg-surface-base overflow-hidden text-text-primary selection:bg-accent-teal/30 selection:text-text-primary font-sans">
       {/* Workspace Top Bar (48px) */}
-      <header className="h-[48px] min-h-[48px] max-h-[48px] box-border border-b border-border-subtle bg-surface-base px-3.5 flex items-center justify-between shrink-0 select-none">
+      <header className="h-14 min-h-14 max-h-14 box-border border-b border-border-subtle bg-surface-base pt-[env(safe-area-inset-top)] px-3.5 flex items-center justify-between shrink-0 select-none">
         <div className="flex items-center gap-3 min-w-0">
           <Link
             to="/projects"
-            className="p-1.5 rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-accent"
+            className="flex items-center justify-center w-11 h-11 rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-accent"
             title="Back to Dashboard"
             aria-label="Back to Projects Dashboard"
           >
