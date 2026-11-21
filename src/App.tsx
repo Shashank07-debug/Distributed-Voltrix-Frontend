@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { ProtectedLayout } from './components/layout/ProtectedLayout';
 
-import { LandingPage } from './pages/Landing/LandingPage';
+import { LandingPage } from './landing/LandingPage';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { SignupPage } from './pages/Auth/SignupPage';
 import { ProjectsDashboard } from './pages/Dashboard/ProjectsDashboard';
