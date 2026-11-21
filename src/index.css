@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./landing/tokens.css";
 
 @theme {
   --color-surface-base: #090A0F;
