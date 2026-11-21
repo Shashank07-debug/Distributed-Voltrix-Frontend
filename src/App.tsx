@@ -7,14 +7,27 @@ import { PublicLayout } from './components/layout/PublicLayout';
 import { ProtectedLayout } from './components/layout/ProtectedLayout';
 
 import { LandingPage } from './landing/LandingPage';
-import { LoginPage } from './pages/Auth/LoginPage';
-import { SignupPage } from './pages/Auth/SignupPage';
-import { ProjectsDashboard } from './pages/Dashboard/ProjectsDashboard';
-import { WorkspacePage } from './pages/Workspace/WorkspacePage';
-import { BillingPage } from './pages/Billing/BillingPage';
+import { useLenisScroll } from './landing/components/useLenisScroll';
 
 import { CustomCursor } from './components/common/CustomCursor';
 import { Preloader } from './components/common/Preloader';
+
+// Route code-splitting for high-performance landing Lighthouse scores
+const LoginPage = React.lazy(() =>
+  import('./pages/Auth/LoginPage').then((m) => ({ default: m.LoginPage }))
+);
+const SignupPage = React.lazy(() =>
+  import('./pages/Auth/SignupPage').then((m) => ({ default: m.SignupPage }))
+);
+const ProjectsDashboard = React.lazy(() =>
+  import('./pages/Dashboard/ProjectsDashboard').then((m) => ({ default: m.ProjectsDashboard }))
+);
+const WorkspacePage = React.lazy(() =>
+  import('./pages/Workspace/WorkspacePage').then((m) => ({ default: m.WorkspacePage }))
+);
+const BillingPage = React.lazy(() =>
+  import('./pages/Billing/BillingPage').then((m) => ({ default: m.BillingPage }))
+);
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -25,6 +38,12 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// App-root Smooth Scroll Controller
+const SmoothScrollManager: React.FC = () => {
+  useLenisScroll();
+  return null;
+};
 
 export const App: React.FC = () => {
   const [showPreloader, setShowPreloader] = useState<boolean>(() => {
@@ -47,9 +66,10 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
+        <SmoothScrollManager />
         {showPreloader && <Preloader onComplete={handlePreloaderComplete} />}
         <CustomCursor />
-        
+
         {/* Global Toast Notifications */}
         <Toaster
           theme="dark"
@@ -64,27 +84,29 @@ export const App: React.FC = () => {
           }}
         />
 
-        <Routes>
-          {/* Public Marketing Routes */}
-          <Route element={<PublicLayout />}>
-            <Route path="/" element={<LandingPage />} />
-          </Route>
+        <React.Suspense fallback={<div className="min-h-screen bg-[#090D0F]" />}>
+          <Routes>
+            {/* Public Marketing Routes */}
+            <Route element={<PublicLayout />}>
+              <Route path="/" element={<LandingPage />} />
+            </Route>
 
-          {/* Auth Routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
+            {/* Auth Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
 
-          {/* Protected Application Routes */}
-          <Route element={<ProtectedLayout />}>
-            <Route path="/projects" element={<ProjectsDashboard />} />
-            <Route path="/billing" element={<BillingPage />} />
-          </Route>
+            {/* Protected Application Routes */}
+            <Route element={<ProtectedLayout />}>
+              <Route path="/projects" element={<ProjectsDashboard />} />
+              <Route path="/billing" element={<BillingPage />} />
+            </Route>
 
-          {/* Full Screen Workspace Route */}
-          <Route element={<ProtectedLayout />}>
-            <Route path="/projects/:projectId" element={<WorkspacePage />} />
-          </Route>
-        </Routes>
+            {/* Full Screen Workspace Route */}
+            <Route element={<ProtectedLayout />}>
+              <Route path="/projects/:projectId" element={<WorkspacePage />} />
+            </Route>
+          </Routes>
+        </React.Suspense>
       </Router>
     </QueryClientProvider>
   );

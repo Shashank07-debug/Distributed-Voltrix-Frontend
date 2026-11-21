@@ -186,3 +186,61 @@ section[id] {
   mask-image: linear-gradient(to right, black 90%, transparent 100%);
   -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
 }
+
+/* Fluid Typography & Balanced Wrapping */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* iOS 16px input minimum to prevent unwanted auto-zoom on focus */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Page load & route transitions: short opacity and translateY fade (200ms) */
+.page-route-transition {
+  animation: page-route-fade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes page-route-fade {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover and press states: transform & opacity only, 150-200ms, under hover: hover */
+@media (hover: hover) {
+  .interactive-motion {
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+  .interactive-motion:hover {
+    transform: translateY(-2px);
+  }
+  .interactive-motion:active {
+    transform: translateY(0) scale(0.98);
+  }
+}
+
+/* Respect prefers-reduced-motion everywhere */
+@media (prefers-reduced-motion: reduce) {
+  .page-route-transition {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

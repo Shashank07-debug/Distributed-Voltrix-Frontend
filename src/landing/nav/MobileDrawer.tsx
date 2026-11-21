@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { NAV_MENUS } from './navData';
-import { X, ChevronRight, ChevronDown } from 'lucide-react';
+import { X, ChevronDown } from 'lucide-react';
 import { Button } from '../components/Button';
 
 export interface MobileDrawerProps {
@@ -16,24 +16,71 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
   isAuthenticated,
 }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
   const [expandedMenu, setExpandedMenu] = useState<string | null>('product');
+  const location = useLocation();
 
-  // Trap focus and body scroll lock
+  // Close on route change
+  useEffect(() => {
+    onClose();
+  }, [location.pathname]);
+
+  // Focus trap and body scroll lock
   useEffect(() => {
     if (!isOpen) return;
 
+    // Save previous active element to restore later
+    triggerRef.current = document.activeElement as HTMLElement;
+
+    // Body scroll lock
+    const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
+    // Focus first interactive element inside drawer
+    const focusableSelector =
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    const timeout = setTimeout(() => {
+      const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>(focusableSelector);
+      if (focusableElements && focusableElements.length > 0) {
+        focusableElements[0].focus();
+      }
+    }, 50);
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
+        return;
+      }
+
+      if (e.key === 'Tab') {
+        const focusableElements = drawerRef.current?.querySelectorAll<HTMLElement>(focusableSelector);
+        if (!focusableElements || focusableElements.length === 0) return;
+
+        const first = focusableElements[0];
+        const last = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      document.body.style.overflow = '';
+      clearTimeout(timeout);
+      document.body.style.overflow = prevOverflow;
       document.removeEventListener('keydown', handleKeyDown);
+      triggerRef.current?.focus();
     };
   }, [isOpen, onClose]);
 
@@ -55,10 +102,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
-        className="fixed inset-y-0 right-0 w-full max-w-sm bg-[var(--landing-surface-1)] border-l border-[var(--landing-border)] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-240"
+        className="fixed inset-y-0 right-0 w-full max-w-sm h-full h-[100dvh] bg-[var(--landing-surface-1)] border-l border-[var(--landing-border)] shadow-2xl flex flex-col justify-between animate-in slide-in-from-right duration-200 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--landing-border)]">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--landing-border)] min-h-[56px]">
           <span className="font-mono text-xs text-[var(--landing-text-muted)] uppercase tracking-wider">
             Menu
           </span>
@@ -66,14 +113,14 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Close menu"
-            className="p-1.5 rounded-[var(--landing-radius-sm)] text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-[var(--landing-radius-sm)] text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Collapsible Accordion Navigation */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 [scrollbar-width:thin]">
           {NAV_MENUS.map((menu) => {
             const isExpanded = expandedMenu === menu.id;
             return (
@@ -84,7 +131,8 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
                 <button
                   type="button"
                   onClick={() => setExpandedMenu(isExpanded ? null : menu.id)}
-                  className="w-full flex items-center justify-between p-3.5 text-left text-sm font-medium text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-3)] transition-colors"
+                  aria-expanded={isExpanded}
+                  className="w-full flex items-center justify-between p-4 min-h-[44px] text-left text-sm font-medium text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-3)] transition-colors"
                 >
                   <span>{menu.label}</span>
                   <ChevronDown
@@ -99,7 +147,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
                     {menu.groups.flatMap((g) => g.items).map((item, idx) => {
                       const Icon = item.icon;
                       const content = (
-                        <div className="flex items-center gap-3 p-2 rounded-[var(--landing-radius-sm)] hover:bg-[var(--landing-surface-3)] transition-colors text-xs">
+                        <div className="flex items-center gap-3 p-3 min-h-[44px] rounded-[var(--landing-radius-sm)] hover:bg-[var(--landing-surface-3)] transition-colors text-xs">
                           <Icon className="w-4 h-4 text-[var(--landing-accent)] shrink-0" />
                           <div className="min-w-0">
                             <div className="font-medium text-[var(--landing-text-primary)] truncate">
@@ -118,7 +166,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
                             key={idx}
                             to={item.to}
                             onClick={onClose}
-                            className="block"
+                            className="block focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
                           >
                             {content}
                           </Link>
@@ -129,14 +177,19 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
                         <a
                           key={idx}
                           href={item.href || '#'}
-                          onClick={() => {
+                          onClick={(e) => {
                             onClose();
                             if (item.href?.startsWith('#')) {
-                              const el = document.getElementById(item.href.replace('#', ''));
-                              if (el) el.scrollIntoView({ behavior: 'smooth' });
+                              e.preventDefault();
+                              const targetId = item.href.slice(1);
+                              const el = document.getElementById(targetId);
+                              if (el) {
+                                el.scrollIntoView({ behavior: 'smooth' });
+                                window.history.pushState(null, '', item.href);
+                              }
                             }
                           }}
-                          className="block"
+                          className="block focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
                         >
                           {content}
                         </a>
@@ -152,15 +205,15 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
         {/* Pinned Bottom Actions */}
         <div className="p-4 border-t border-[var(--landing-border)] space-y-2 bg-[var(--landing-surface-1)]">
           {isAuthenticated ? (
-            <Button to="/projects" variant="primary" size="md" className="w-full">
+            <Button to="/projects" variant="primary" size="md" className="w-full min-h-[44px]">
               Go to Workspace
             </Button>
           ) : (
             <>
-              <Button to="/login" variant="secondary" size="md" className="w-full">
+              <Button to="/login" variant="secondary" size="md" className="w-full min-h-[44px]">
                 Log in
               </Button>
-              <Button to="/signup" variant="primary" size="md" className="w-full">
+              <Button to="/signup" variant="primary" size="md" className="w-full min-h-[44px]">
                 Get started
               </Button>
             </>

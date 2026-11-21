@@ -1,21 +1,33 @@
 import { useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import Lenis from 'lenis';
 
-export function useLenisScroll(isModalOrDrawerOpen: boolean = false) {
+export function useLenisScroll() {
   const lenisRef = useRef<Lenis | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
-    // Respect prefers-reduced-motion
+    // 1. Respect prefers-reduced-motion
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
     }
 
+    // 2. Disable on touch devices (native momentum scrolling is faster and smoother)
+    const isTouchDevice =
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0 ||
+      window.matchMedia('(pointer: coarse)').matches;
+
+    if (isTouchDevice) {
+      return;
+    }
+
+    // 3. Initialize Lenis smooth scroll engine
     const lenis = new Lenis({
-      duration: 1.1,
+      duration: 1.0,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      syncTouch: false, // native momentum on mobile/tablets
-      touchMultiplier: 1.5,
+      syncTouch: false,
     });
 
     lenisRef.current = lenis;
@@ -28,17 +40,19 @@ export function useLenisScroll(isModalOrDrawerOpen: boolean = false) {
     }
     rafId = requestAnimationFrame(raf);
 
-    // Global anchor link handler with navbar offset
+    // Global anchor links handler with navbar offset
     const handleAnchorClick = (e: MouseEvent) => {
       const target = (e.target as HTMLElement)?.closest('a');
       if (!target) return;
 
       const href = target.getAttribute('href');
       if (href && href.startsWith('#') && href.length > 1) {
-        const el = document.querySelector(href);
+        const targetId = href.slice(1);
+        const el = document.getElementById(targetId);
         if (el) {
           e.preventDefault();
-          lenis.scrollTo(el as HTMLElement, { offset: -90 });
+          // Navbar height offset (-76px)
+          lenis.scrollTo(el, { offset: -76 });
           window.history.pushState(null, '', href);
         }
       }
@@ -54,15 +68,14 @@ export function useLenisScroll(isModalOrDrawerOpen: boolean = false) {
     };
   }, []);
 
-  // Stop/Start Lenis when modal/drawer opens/closes
+  // Scroll to top on route change
   useEffect(() => {
-    if (!lenisRef.current) return;
-    if (isModalOrDrawerOpen) {
-      lenisRef.current.stop();
+    if (lenisRef.current) {
+      lenisRef.current.scrollTo(0, { immediate: true });
     } else {
-      lenisRef.current.start();
+      window.scrollTo(0, 0);
     }
-  }, [isModalOrDrawerOpen]);
+  }, [location.pathname]);
 
   return lenisRef;
 }

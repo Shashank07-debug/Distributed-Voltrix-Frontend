@@ -1,6 +1,5 @@
 import React from 'react';
 import './tokens.css';
-import { useLenisScroll } from './components/useLenisScroll';
 import { Navbar } from './nav/Navbar';
 import { Hero } from './hero/Hero';
 import { Overview } from './sections/Overview';
@@ -12,9 +11,6 @@ import { FinalCta } from './sections/FinalCta';
 import { Footer } from './Footer';
 
 export const LandingPage: React.FC = () => {
-  // Initialize Lenis Smooth Scroll on landing mount, destroy on unmount
-  useLenisScroll(false);
-
   return (
     <div className="min-h-screen bg-[var(--landing-bg-ink)] text-[var(--landing-text-primary)] flex flex-col font-sans selection:bg-[var(--landing-accent)] selection:text-black relative">
       {/* Skip-to-content accessibility link */}

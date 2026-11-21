@@ -120,7 +120,7 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => setIsMobileDrawerOpen(true)}
               aria-label="Open menu"
-              className="p-1.5 rounded-full text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-full text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
             >
               <Menu className="w-5 h-5" />
             </button>
