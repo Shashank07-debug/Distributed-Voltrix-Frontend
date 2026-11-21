@@ -2,10 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ArrowLeft,
-  Rocket,
-  Users,
   Sparkles,
+  AlertTriangle,
+  FolderTree,
+  MessageSquare,
+  Code2,
+  Globe,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
 } from 'lucide-react';
 import { projectsApi, ProjectSummary, ProjectRole } from '../../api/workspace';
 import { buildFileTree, FileNode } from '../../utils/fileTree';
@@ -14,11 +19,11 @@ import { FileExplorerPane } from '../../components/workspace/FileExplorerPane';
 import { MonacoEditorPane } from '../../components/workspace/MonacoEditorPane';
 import { PreviewPane } from '../../components/workspace/PreviewPane';
 import { MembersDrawer } from '../../components/workspace/MembersDrawer';
+import { AppNavbar, WorkspaceStatus } from '../../components/layout/AppNavbar';
 import { toast } from 'sonner';
 
 const findDefaultFile = (files: { path: string }[]): string | null => {
   if (!files || files.length === 0) return null;
-  // 1. src/App.tsx (or App.tsx)
   const appFile = files.find(
     (f) =>
       f.path === 'src/App.tsx' ||
@@ -28,7 +33,6 @@ const findDefaultFile = (files: { path: string }[]): string | null => {
   );
   if (appFile) return appFile.path;
 
-  // 2. src/main.tsx (or main.tsx / src/index.tsx)
   const mainFile = files.find(
     (f) =>
       f.path === 'src/main.tsx' ||
@@ -38,11 +42,9 @@ const findDefaultFile = (files: { path: string }[]): string | null => {
   );
   if (mainFile) return mainFile.path;
 
-  // 3. First file inside src/
   const srcFile = files.find((f) => f.path.startsWith('src/') || f.path.includes('/src/'));
   if (srcFile) return srcFile.path;
 
-  // 4. First file in repository
   return files[0].path;
 };
 
@@ -50,8 +52,8 @@ export const WorkspacePage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const queryClient = useQueryClient();
 
-  // Active view tab for mobile layout
-  const [mobileTab, setMobileTab] = useState<'chat' | 'files' | 'preview'>('chat');
+  // Mobile / Tablet navigation tab: 'chat' | 'files' | 'editor' | 'preview'
+  const [activeTab, setActiveTab] = useState<'chat' | 'files' | 'editor' | 'preview'>('editor');
 
   // File explorer & editor state
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
@@ -62,13 +64,55 @@ export const WorkspacePage: React.FC = () => {
   const hasAutoSelectedFileRef = useRef(false);
 
   // Deploy & preview state
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(`voltrix_deploy_${projectId}`) || null;
+    } catch {
+      return null;
+    }
+  });
 
   // Members drawer state
   const [isMembersOpen, setIsMembersOpen] = useState(false);
 
+  // Desktop panel widths (stored in localStorage)
+  const [chatWidth, setChatWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('voltrix_ws_chat_w');
+      return saved ? parseInt(saved, 10) : 340;
+    } catch {
+      return 340;
+    }
+  });
+
+  const [treeWidth, setTreeWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('voltrix_ws_tree_w');
+      return saved ? parseInt(saved, 10) : 240;
+    } catch {
+      return 240;
+    }
+  });
+
+  const [isTreeCollapsed, setIsTreeCollapsed] = useState(false);
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false);
+
+  const [previewPercent, setPreviewPercent] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('voltrix_ws_prev_pct');
+      return saved ? parseFloat(saved) : 40;
+    } catch {
+      return 40;
+    }
+  });
+
   // Fetch Project Metadata
-  const { data: project, isLoading: isLoadingProject } = useQuery<ProjectSummary>({
+  const {
+    data: project,
+    isLoading: isLoadingProject,
+    isError: isProjectError,
+    refetch: refetchProject,
+  } = useQuery<ProjectSummary>({
     queryKey: ['project', projectId],
     queryFn: () => projectsApi.getProject(projectId!),
     enabled: Boolean(projectId),
@@ -77,7 +121,11 @@ export const WorkspacePage: React.FC = () => {
   const role: ProjectRole = project?.role || 'VIEWER';
 
   // Fetch Files Tree
-  const { data: filesData, isLoading: isLoadingFiles, refetch: refetchFiles } = useQuery({
+  const {
+    data: filesData,
+    isLoading: isLoadingFiles,
+    refetch: refetchFiles,
+  } = useQuery({
     queryKey: ['project-files', projectId],
     queryFn: () => projectsApi.getFiles(projectId!),
     enabled: Boolean(projectId),
@@ -88,7 +136,6 @@ export const WorkspacePage: React.FC = () => {
       const tree = buildFileTree(filesData.files);
       setFileTree(tree);
 
-      // Auto-open prioritized default file only on initial load if no file active
       if (!hasAutoSelectedFileRef.current && filesData.files.length > 0) {
         hasAutoSelectedFileRef.current = true;
         if (activeFilePath === null && openTabs.length === 0) {
@@ -126,9 +173,14 @@ export const WorkspacePage: React.FC = () => {
     onSuccess: (data) => {
       toast.success('Project deployed successfully!');
       setPreviewUrl(data.previewUrl);
+      try {
+        localStorage.setItem(`voltrix_deploy_${projectId}`, data.previewUrl);
+      } catch {}
     },
     onError: (err: unknown) => {
-      const msg = (err as { response?: { data?: { message?: string } } }).response?.data?.message || 'Deployment failed';
+      const msg =
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message ||
+        'Deployment failed';
       toast.error(msg);
     },
   });
@@ -138,6 +190,7 @@ export const WorkspacePage: React.FC = () => {
       setOpenTabs((prev) => [...prev, path]);
     }
     setActiveFilePath(path);
+    setActiveTab('editor');
   };
 
   const handleCloseTab = (path: string) => {
@@ -148,11 +201,19 @@ export const WorkspacePage: React.FC = () => {
     }
   };
 
-  // Called when AI streams a FILE_EDIT event
+  const handleCloseOthers = (keepPath: string) => {
+    setOpenTabs([keepPath]);
+    setActiveFilePath(keepPath);
+  };
+
+  const handleCloseAll = () => {
+    setOpenTabs([]);
+    setActiveFilePath(null);
+  };
+
   const handleFileEdited = (editedPath: string) => {
     refetchFiles();
     if (activeFilePath === editedPath) {
-      // Re-fetch active file content
       projectsApi
         .getFileContent(projectId!, editedPath)
         .then((data) => setFileContent(data || ''))
@@ -160,106 +221,298 @@ export const WorkspacePage: React.FC = () => {
     }
   };
 
+  // Resizing logic for Chat Pane
+  const handleChatResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = chatWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.max(260, Math.min(500, startWidth + delta));
+      setChatWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      try {
+        localStorage.setItem('voltrix_ws_chat_w', String(chatWidth));
+      } catch {}
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Resizing logic for File Tree Pane
+  const handleTreeResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = treeWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const delta = moveEvent.clientX - startX;
+      const newWidth = Math.max(180, Math.min(380, startWidth + delta));
+      setTreeWidth(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      try {
+        localStorage.setItem('voltrix_ws_tree_w', String(treeWidth));
+      } catch {}
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Resizing logic for Preview Pane
+  const handlePreviewResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startPct = previewPercent;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const totalWidth = window.innerWidth;
+      const delta = startX - moveEvent.clientX;
+      const deltaPct = (delta / totalWidth) * 100;
+      const newPct = Math.max(25, Math.min(60, startPct + deltaPct));
+      setPreviewPercent(newPct);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      try {
+        localStorage.setItem('voltrix_ws_prev_pct', String(previewPercent));
+      } catch {}
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
+  // Keyboard Shortcuts (Ctrl/Cmd+B, Ctrl/Cmd+J)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setIsTreeCollapsed((prev) => !prev);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setIsChatCollapsed((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Compute status for AppNavbar
+  const status: WorkspaceStatus = deployMutation.isPending
+    ? 'generating'
+    : previewUrl
+    ? 'deployed'
+    : 'idle';
+
+  // Loading Skeleton State
   if (isLoadingProject) {
     return (
-      <div className="h-screen w-screen bg-surface-base flex flex-col items-center justify-center text-[13px] font-sans text-text-secondary">
-        <Sparkles className="w-6 h-6 text-accent-teal animate-spin mb-3" />
-        Initializing Voltrix Workspace...
+      <div className="h-[100dvh] w-full bg-[var(--landing-bg-ink)] flex flex-col items-center justify-center text-xs font-mono text-[var(--landing-text-secondary)] select-none">
+        <Sparkles className="w-6 h-6 text-[var(--landing-accent)] animate-spin mb-3" />
+        initializing voltrix workspace...
+      </div>
+    );
+  }
+
+  // Error State
+  if (isProjectError || !project) {
+    return (
+      <div className="h-[100dvh] w-full bg-[var(--landing-bg-ink)] flex flex-col items-center justify-center p-6 text-center select-none">
+        <div className="w-14 h-14 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4 text-red-400">
+          <AlertTriangle className="w-7 h-7" />
+        </div>
+        <h2 className="font-display text-xl font-bold text-white mb-2">
+          project workspace not found.
+        </h2>
+        <p className="text-xs text-[var(--landing-text-secondary)] max-w-sm mb-6 font-sans">
+          You may not have permissions to access this project, or it might have been removed.
+        </p>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={() => refetchProject()}
+            className="h-10 px-4 rounded-full bg-[var(--landing-surface-2)] border border-[var(--landing-border)] text-xs font-mono text-white hover:border-white/20 flex items-center gap-2"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>retry</span>
+          </button>
+          <Link
+            to="/projects"
+            className="h-10 px-5 rounded-full bg-[var(--landing-accent)] text-[#090D0F] font-bold text-xs font-mono flex items-center justify-center"
+          >
+            back to projects
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-surface-base overflow-hidden text-text-primary selection:bg-accent-teal/30 selection:text-text-primary font-sans">
-      {/* Workspace Top Bar (48px) */}
-      <header className="h-14 min-h-14 max-h-14 box-border border-b border-border-subtle bg-surface-base pt-[env(safe-area-inset-top)] px-3.5 flex items-center justify-between shrink-0 select-none">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            to="/projects"
-            className="flex items-center justify-center w-11 h-11 rounded-md text-text-tertiary hover:text-text-primary hover:bg-surface-raised transition-colors focus-visible:outline-accent"
-            title="Back to Dashboard"
-            aria-label="Back to Projects Dashboard"
+    <div className="h-[100dvh] max-h-[100dvh] w-full flex flex-col bg-[var(--landing-bg-ink)] overflow-hidden text-[var(--landing-text-primary)] select-none font-sans">
+      {/* ── AppNavbar (56px) ──────────────────────────────────────────────── */}
+      <AppNavbar
+        mode="workspace"
+        projectName={project.name}
+        projectRole={role}
+        status={status}
+        onDeploy={() => deployMutation.mutate()}
+        isDeploying={deployMutation.isPending}
+        onOpenCollaborators={() => setIsMembersOpen(true)}
+      />
+
+      {/* ── Desktop Resizable Workspace Layout (≥ 1100px) ────────────────── */}
+      <div className="hidden min-[1100px]:flex flex-1 overflow-hidden relative">
+        {/* Zone 1: Chat Pane */}
+        {!isChatCollapsed && (
+          <div
+            style={{ width: `${chatWidth}px` }}
+            className="shrink-0 h-full overflow-hidden transition-[width] duration-75"
           >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-
-          {/* Breadcrumb: Projects / <project name> */}
-          <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px] font-sans">
-            <Link
-              to="/projects"
-              className="text-text-tertiary hover:text-text-secondary transition-colors"
-            >
-              Projects
-            </Link>
-            <span className="text-text-tertiary">/</span>
-            <span className="text-text-primary font-medium truncate max-w-[140px] sm:max-w-[220px]">
-              {project?.name || 'Workspace'}
-            </span>
-          </nav>
-
-          {/* Role badge: No OWNER badge; quiet neutral tag only for Editor / Viewer */}
-          {role === 'EDITOR' && (
-            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-sans font-medium text-text-tertiary bg-surface-raised border border-border-subtle">
-              Editor
-            </span>
-          )}
-          {role === 'VIEWER' && (
-            <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-sans font-medium text-text-tertiary bg-surface-raised border border-border-subtle">
-              Viewer
-            </span>
-          )}
-
-          {/* Quiet Status Chip */}
-          <div className="hidden md:flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[12px] font-sans text-text-tertiary bg-surface-panel border border-border-subtle">
-            {deployMutation.isPending ? (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-status-warning animate-pulse" />
-                <span className="text-text-secondary">Building</span>
-              </>
-            ) : previewUrl ? (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-status-success" />
-                <span className="text-text-secondary">Live</span>
-              </>
-            ) : (
-              <>
-                <span className="w-1.5 h-1.5 rounded-full bg-text-tertiary opacity-50" />
-                <span>Not deployed</span>
-              </>
-            )}
+            <ChatPane
+              projectId={projectId!}
+              role={role}
+              onFileEdited={handleFileEdited}
+            />
           </div>
+        )}
+
+        {/* Chat Resizer Handle */}
+        {!isChatCollapsed && (
+          <div
+            role="separator"
+            tabIndex={0}
+            onMouseDown={handleChatResizeStart}
+            onDoubleClick={() => setChatWidth(340)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') setChatWidth((w) => Math.max(260, w - 10));
+              if (e.key === 'ArrowRight') setChatWidth((w) => Math.min(500, w + 10));
+            }}
+            className="w-1.5 hover:w-2 -ml-1 h-full cursor-col-resize hover:bg-[var(--landing-accent)] transition-all z-20 shrink-0"
+            title="Drag to resize chat (Double click to reset)"
+          />
+        )}
+
+        {/* Zone 2: File Tree Explorer */}
+        <div
+          style={{ width: isTreeCollapsed ? '56px' : `${treeWidth}px` }}
+          className="shrink-0 h-full overflow-hidden transition-[width] duration-150"
+        >
+          <FileExplorerPane
+            tree={fileTree}
+            activeFilePath={activeFilePath}
+            onSelectFile={handleSelectFile}
+            isLoading={isLoadingFiles}
+            isCollapsed={isTreeCollapsed}
+            totalFilesCount={filesData?.files?.length}
+          />
         </div>
 
-        {/* Desktop Actions & Mobile Segmented Switcher */}
-        <div className="flex items-center gap-2">
-          {/* Mobile view switch tabs (segmented control) */}
-          <div className="flex lg:hidden bg-surface-panel p-0.5 rounded-lg border border-border-subtle">
+        {/* Tree Resizer Handle */}
+        {!isTreeCollapsed && (
+          <div
+            role="separator"
+            tabIndex={0}
+            onMouseDown={handleTreeResizeStart}
+            onDoubleClick={() => setTreeWidth(240)}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') setTreeWidth((w) => Math.max(180, w - 10));
+              if (e.key === 'ArrowRight') setTreeWidth((w) => Math.min(380, w + 10));
+            }}
+            className="w-1.5 hover:w-2 -ml-1 h-full cursor-col-resize hover:bg-[var(--landing-accent)] transition-all z-20 shrink-0"
+            title="Drag to resize file tree (Double click to reset)"
+          />
+        )}
+
+        {/* Zone 3: Monaco Editor (flex-1) */}
+        <div className="flex-1 min-w-[340px] h-full overflow-hidden">
+          <MonacoEditorPane
+            openTabs={openTabs}
+            activeFilePath={activeFilePath}
+            fileContent={fileContent}
+            isLoadingContent={isLoadingContent}
+            onSelectTab={setActiveFilePath}
+            onCloseTab={handleCloseTab}
+            onCloseOthers={handleCloseOthers}
+            onCloseAll={handleCloseAll}
+            isStreaming={deployMutation.isPending}
+          />
+        </div>
+
+        {/* Preview Resizer Handle */}
+        <div
+          role="separator"
+          tabIndex={0}
+          onMouseDown={handlePreviewResizeStart}
+          onDoubleClick={() => setPreviewPercent(40)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') setPreviewPercent((p) => Math.min(60, p + 2));
+            if (e.key === 'ArrowRight') setPreviewPercent((p) => Math.max(25, p - 2));
+          }}
+          className="w-1.5 hover:w-2 -ml-1 h-full cursor-col-resize hover:bg-[var(--landing-accent)] transition-all z-20 shrink-0"
+          title="Drag to resize preview (Double click to reset)"
+        />
+
+        {/* Zone 4: Live Preview Pane */}
+        <div
+          style={{ width: `${previewPercent}%` }}
+          className="shrink-0 h-full overflow-hidden border-l border-[var(--landing-border)]"
+        >
+          <PreviewPane
+            previewUrl={previewUrl}
+            onDeploy={() => deployMutation.mutate()}
+            isDeploying={deployMutation.isPending}
+          />
+        </div>
+      </div>
+
+      {/* ── Tablet Layout (700px to 1099px) ───────────────────────────────── */}
+      <div className="hidden min-[700px]:max-[1099px]:flex flex-col flex-1 overflow-hidden">
+        {/* Tablet Top Tab Selector */}
+        <div className="h-10 px-4 bg-[var(--landing-bg-ink)] border-b border-[var(--landing-border)] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-1 font-mono text-xs">
             <button
-              onClick={() => setMobileTab('chat')}
-              className={`px-2.5 py-1 rounded-md text-[12px] font-sans font-medium transition-colors ${
-                mobileTab === 'chat'
-                  ? 'bg-surface-raised text-text-primary shadow-xs'
-                  : 'text-text-tertiary hover:text-text-secondary'
+              type="button"
+              onClick={() => setActiveTab('editor')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${
+                activeTab === 'editor'
+                  ? 'bg-[var(--landing-surface-2)] text-[var(--landing-accent)] font-semibold'
+                  : 'text-[var(--landing-text-secondary)] hover:text-white'
+              }`}
+            >
+              Editor
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('chat')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${
+                activeTab === 'chat'
+                  ? 'bg-[var(--landing-surface-2)] text-[var(--landing-accent)] font-semibold'
+                  : 'text-[var(--landing-text-secondary)] hover:text-white'
               }`}
             >
               Chat
             </button>
             <button
-              onClick={() => setMobileTab('files')}
-              className={`px-2.5 py-1 rounded-md text-[12px] font-sans font-medium transition-colors ${
-                mobileTab === 'files'
-                  ? 'bg-surface-raised text-text-primary shadow-xs'
-                  : 'text-text-tertiary hover:text-text-secondary'
-              }`}
-            >
-              Files
-            </button>
-            <button
-              onClick={() => setMobileTab('preview')}
-              className={`px-2.5 py-1 rounded-md text-[12px] font-sans font-medium transition-colors ${
-                mobileTab === 'preview'
-                  ? 'bg-surface-raised text-text-primary shadow-xs'
-                  : 'text-text-tertiary hover:text-text-secondary'
+              type="button"
+              onClick={() => setActiveTab('preview')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${
+                activeTab === 'preview'
+                  ? 'bg-[var(--landing-surface-2)] text-[var(--landing-accent)] font-semibold'
+                  : 'text-[var(--landing-text-secondary)] hover:text-white'
               }`}
             >
               Preview
@@ -267,36 +520,46 @@ export const WorkspacePage: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setIsMembersOpen(true)}
-            className="h-8 px-2.5 rounded-lg bg-transparent hover:bg-surface-raised border border-border-subtle hover:border-border-hover text-[13px] font-sans font-medium text-text-secondary hover:text-text-primary flex items-center gap-1.5 transition-colors focus-visible:outline-accent cursor-pointer"
-            title="View Collaborators"
-            aria-label="View Project Collaborators"
+            type="button"
+            onClick={() => setIsTreeCollapsed((prev) => !prev)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--landing-border)] hover:bg-white/5 text-xs font-mono text-[var(--landing-text-secondary)]"
           >
-            <Users className="w-3.5 h-3.5 text-text-tertiary" />
-            <span className="hidden sm:inline">Collaborators</span>
+            <FolderTree className="w-3.5 h-3.5 text-[var(--landing-accent)]" />
+            <span>{isTreeCollapsed ? 'Show Files' : 'Hide Files'}</span>
           </button>
-
-          {role !== 'VIEWER' && (
-            <button
-              onClick={() => deployMutation.mutate()}
-              disabled={deployMutation.isPending}
-              className="h-8 px-3 rounded-lg bg-accent-teal hover:bg-accent-teal-hover active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed text-[#0B0B0F] text-[13px] font-sans font-medium transition-colors flex items-center gap-1.5 focus-visible:outline-accent cursor-pointer"
-              title="Deploy project preview"
-              aria-label="Deploy preview"
-            >
-              <Rocket className="w-3.5 h-3.5 text-[#0B0B0F]" />
-              <span>{deployMutation.isPending ? 'Deploying...' : 'Deploy'}</span>
-            </button>
-          )}
         </div>
-      </header>
 
-      {/* Main 3-Pane Resizable Grid (Desktop) vs Tabs (Mobile) */}
-      <div className="flex-1 overflow-hidden relative">
-        {/* Desktop Layout with Balanced Proportions & 1px Dividers */}
-        <div className="hidden lg:flex h-full w-full overflow-hidden bg-surface-base">
-          {/* Panel 1: Chat Pane (300px - 360px) */}
-          <div className="w-[300px] xl:w-[330px] 2xl:w-[360px] shrink-0 h-full overflow-hidden border-r border-border-subtle bg-surface-base">
+        {/* Tablet Body (Keep mounted for zero state loss) */}
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Collapsible File Drawer */}
+          {!isTreeCollapsed && (
+            <div className="w-60 h-full shrink-0 border-r border-[var(--landing-border)]">
+              <FileExplorerPane
+                tree={fileTree}
+                activeFilePath={activeFilePath}
+                onSelectFile={handleSelectFile}
+                isLoading={isLoadingFiles}
+              />
+            </div>
+          )}
+
+          {/* Editor view */}
+          <div className={`flex-1 h-full ${activeTab === 'editor' ? 'flex flex-col' : 'hidden'}`}>
+            <MonacoEditorPane
+              openTabs={openTabs}
+              activeFilePath={activeFilePath}
+              fileContent={fileContent}
+              isLoadingContent={isLoadingContent}
+              onSelectTab={setActiveFilePath}
+              onCloseTab={handleCloseTab}
+              onCloseOthers={handleCloseOthers}
+              onCloseAll={handleCloseAll}
+              isStreaming={deployMutation.isPending}
+            />
+          </div>
+
+          {/* Chat view */}
+          <div className={`flex-1 h-full ${activeTab === 'chat' ? 'flex flex-col' : 'hidden'}`}>
             <ChatPane
               projectId={projectId!}
               role={role}
@@ -304,8 +567,30 @@ export const WorkspacePage: React.FC = () => {
             />
           </div>
 
-          {/* Panel 2: Files Explorer (Fixed 240px) */}
-          <div className="w-[240px] min-w-[240px] max-w-[240px] shrink-0 h-full overflow-hidden border-r border-border-subtle bg-surface-base">
+          {/* Preview view */}
+          <div className={`flex-1 h-full ${activeTab === 'preview' ? 'flex flex-col' : 'hidden'}`}>
+            <PreviewPane
+              previewUrl={previewUrl}
+              onDeploy={() => deployMutation.mutate()}
+              isDeploying={deployMutation.isPending}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Mobile Layout (< 700px) with Bottom Tab Bar ──────────────────── */}
+      <div className="min-[700px]:hidden flex flex-col flex-1 overflow-hidden">
+        {/* Panels kept mounted via display none/flex */}
+        <div className="flex-1 overflow-hidden relative">
+          <div className={`h-full ${activeTab === 'chat' ? 'flex flex-col' : 'hidden'}`}>
+            <ChatPane
+              projectId={projectId!}
+              role={role}
+              onFileEdited={handleFileEdited}
+            />
+          </div>
+
+          <div className={`h-full ${activeTab === 'files' ? 'flex flex-col' : 'hidden'}`}>
             <FileExplorerPane
               tree={fileTree}
               activeFilePath={activeFilePath}
@@ -314,8 +599,7 @@ export const WorkspacePage: React.FC = () => {
             />
           </div>
 
-          {/* Panel 3: Monaco Editor (Primary Surface, flex-1.1) */}
-          <div className="flex-[1.1] min-w-[320px] h-full overflow-hidden border-r border-border-subtle bg-surface-base">
+          <div className={`h-full ${activeTab === 'editor' ? 'flex flex-col' : 'hidden'}`}>
             <MonacoEditorPane
               openTabs={openTabs}
               activeFilePath={activeFilePath}
@@ -323,11 +607,13 @@ export const WorkspacePage: React.FC = () => {
               isLoadingContent={isLoadingContent}
               onSelectTab={setActiveFilePath}
               onCloseTab={handleCloseTab}
+              onCloseOthers={handleCloseOthers}
+              onCloseAll={handleCloseAll}
+              isStreaming={deployMutation.isPending}
             />
           </div>
 
-          {/* Panel 4: Live Preview Pane (flex-1) */}
-          <div className="flex-1 min-w-[300px] h-full overflow-hidden bg-surface-base">
+          <div className={`h-full ${activeTab === 'preview' ? 'flex flex-col' : 'hidden'}`}>
             <PreviewPane
               previewUrl={previewUrl}
               onDeploy={() => deployMutation.mutate()}
@@ -336,46 +622,66 @@ export const WorkspacePage: React.FC = () => {
           </div>
         </div>
 
-        {/* Mobile Tabbed Layout */}
-        <div className="lg:hidden h-full">
-          {mobileTab === 'chat' && (
-            <ChatPane
-              projectId={projectId!}
-              role={role}
-              onFileEdited={handleFileEdited}
-            />
-          )}
+        {/* Mobile Bottom Tab Bar (56px) */}
+        <nav
+          className="h-14 min-h-14 max-h-14 bg-[var(--landing-surface-1)] border-t border-[var(--landing-border)] grid grid-cols-4 items-center shrink-0 pb-[env(safe-area-inset-bottom)] z-30"
+          aria-label="Mobile workspace views"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('files')}
+            className={`h-full flex flex-col items-center justify-center gap-1 text-[10px] font-mono transition-colors ${
+              activeTab === 'files'
+                ? 'text-[var(--landing-accent)] font-bold'
+                : 'text-[var(--landing-text-secondary)] hover:text-white'
+            }`}
+          >
+            <FolderTree className="w-4 h-4" />
+            <span>Files</span>
+          </button>
 
-          {mobileTab === 'files' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 h-full">
-              <FileExplorerPane
-                tree={fileTree}
-                activeFilePath={activeFilePath}
-                onSelectFile={handleSelectFile}
-                isLoading={isLoadingFiles}
-              />
-              <MonacoEditorPane
-                openTabs={openTabs}
-                activeFilePath={activeFilePath}
-                fileContent={fileContent}
-                isLoadingContent={isLoadingContent}
-                onSelectTab={setActiveFilePath}
-                onCloseTab={handleCloseTab}
-              />
-            </div>
-          )}
+          <button
+            type="button"
+            onClick={() => setActiveTab('editor')}
+            className={`h-full flex flex-col items-center justify-center gap-1 text-[10px] font-mono transition-colors ${
+              activeTab === 'editor'
+                ? 'text-[var(--landing-accent)] font-bold'
+                : 'text-[var(--landing-text-secondary)] hover:text-white'
+            }`}
+          >
+            <Code2 className="w-4 h-4" />
+            <span>Editor</span>
+          </button>
 
-          {mobileTab === 'preview' && (
-            <PreviewPane
-              previewUrl={previewUrl}
-              onDeploy={() => deployMutation.mutate()}
-              isDeploying={deployMutation.isPending}
-            />
-          )}
-        </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('chat')}
+            className={`h-full flex flex-col items-center justify-center gap-1 text-[10px] font-mono transition-colors ${
+              activeTab === 'chat'
+                ? 'text-[var(--landing-accent)] font-bold'
+                : 'text-[var(--landing-text-secondary)] hover:text-white'
+            }`}
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span>Chat</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('preview')}
+            className={`h-full flex flex-col items-center justify-center gap-1 text-[10px] font-mono transition-colors ${
+              activeTab === 'preview'
+                ? 'text-[var(--landing-accent)] font-bold'
+                : 'text-[var(--landing-text-secondary)] hover:text-white'
+            }`}
+          >
+            <Globe className="w-4 h-4" />
+            <span>Preview</span>
+          </button>
+        </nav>
       </div>
 
-      {/* Members Drawer */}
+      {/* ── Members Drawer ────────────────────────────────────────────────── */}
       <MembersDrawer
         projectId={projectId!}
         userRole={role}

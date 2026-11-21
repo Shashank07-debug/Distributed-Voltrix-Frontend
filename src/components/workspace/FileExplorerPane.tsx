@@ -9,6 +9,8 @@ import {
   File,
   Settings,
   ChevronRight,
+  ChevronDown,
+  Layers,
 } from 'lucide-react';
 import { FileNode } from '../../utils/fileTree';
 
@@ -17,6 +19,8 @@ interface FileExplorerPaneProps {
   activeFilePath: string | null;
   onSelectFile: (filePath: string) => void;
   isLoading?: boolean;
+  isCollapsed?: boolean;
+  totalFilesCount?: number;
 }
 
 export const getFileIcon = (fileName: string) => {
@@ -29,37 +33,37 @@ export const getFileIcon = (fileName: string) => {
     lower.includes('package') ||
     lower.startsWith('.oxlint')
   ) {
-    return <Settings className="w-3.5 h-3.5 text-text-tertiary shrink-0" />;
+    return <Settings className="w-3.5 h-3.5 text-[var(--landing-text-secondary)] opacity-60 shrink-0" />;
   }
 
   const ext = lower.split('.').pop();
   switch (ext) {
     case 'tsx':
     case 'jsx':
-      return <FileCode className="w-3.5 h-3.5 text-cyan-400/80 shrink-0" />;
+      return <FileCode className="w-3.5 h-3.5 text-[var(--landing-accent)] shrink-0" />;
     case 'ts':
     case 'js':
     case 'mjs':
-      return <FileCode className="w-3.5 h-3.5 text-sky-400/80 shrink-0" />;
+      return <FileCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
     case 'css':
     case 'scss':
-      return <FileCode className="w-3.5 h-3.5 text-pink-400/80 shrink-0" />;
+      return <FileCode className="w-3.5 h-3.5 text-pink-400 shrink-0" />;
     case 'json':
-      return <FileJson className="w-3.5 h-3.5 text-amber-400/80 shrink-0" />;
+      return <FileJson className="w-3.5 h-3.5 text-amber-400 shrink-0" />;
     case 'html':
-      return <FileCode className="w-3.5 h-3.5 text-orange-400/80 shrink-0" />;
+      return <FileCode className="w-3.5 h-3.5 text-orange-400 shrink-0" />;
     case 'md':
     case 'txt':
-      return <FileText className="w-3.5 h-3.5 text-slate-400/80 shrink-0" />;
+      return <FileText className="w-3.5 h-3.5 text-slate-300 shrink-0" />;
     case 'svg':
     case 'png':
     case 'jpg':
     case 'jpeg':
     case 'ico':
     case 'webp':
-      return <FileImage className="w-3.5 h-3.5 text-emerald-400/80 shrink-0" />;
+      return <FileImage className="w-3.5 h-3.5 text-emerald-400 shrink-0" />;
     default:
-      return <File className="w-3.5 h-3.5 text-text-tertiary shrink-0" />;
+      return <File className="w-3.5 h-3.5 text-[var(--landing-text-secondary)] shrink-0" />;
   }
 };
 
@@ -102,7 +106,7 @@ const FileTreeNodeItem: React.FC<{
       {/* Subtle guide line for nested children */}
       {depth > 0 && (
         <span
-          className="absolute left-0 top-0 bottom-0 border-l border-white/[0.04]"
+          className="absolute left-0 top-0 bottom-0 border-l border-white/[0.06]"
           style={{ left: `${depth * 14}px` }}
         />
       )}
@@ -116,23 +120,23 @@ const FileTreeNodeItem: React.FC<{
         onClick={handleClick}
         onKeyDown={handleKeyDown}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
-        className={`w-full h-7 px-2 flex items-center gap-1.5 text-[13px] font-sans transition-colors rounded-md select-none group text-left cursor-pointer focus-visible:outline-accent ${
+        className={`w-full h-7 min-h-7 px-2 flex items-center gap-1.5 text-xs font-mono transition-colors rounded-lg select-none group text-left cursor-pointer box-border focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)] ${
           isSelected
-            ? 'bg-surface-raised text-accent-teal font-medium'
-            : 'text-text-secondary hover:text-text-primary hover:bg-surface-raised/60'
+            ? 'border-l-2 border-[var(--landing-accent)] bg-white/5 text-[var(--landing-accent)] font-semibold'
+            : 'text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-white/[0.03]'
         }`}
       >
         {node.isDirectory ? (
           <>
             <ChevronRight
-              className={`w-3.5 h-3.5 text-text-tertiary shrink-0 transition-transform duration-150 ease-out ${
+              className={`w-3.5 h-3.5 text-[var(--landing-text-secondary)] opacity-60 shrink-0 transition-transform duration-150 ease-out ${
                 isOpen ? 'rotate-90' : ''
               }`}
             />
             {isOpen ? (
-              <FolderOpen className="w-3.5 h-3.5 text-text-secondary shrink-0" />
+              <FolderOpen className="w-3.5 h-3.5 text-[var(--landing-accent)] opacity-80 shrink-0" />
             ) : (
-              <Folder className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
+              <Folder className="w-3.5 h-3.5 text-[var(--landing-text-secondary)] opacity-70 shrink-0" />
             )}
           </>
         ) : (
@@ -141,7 +145,7 @@ const FileTreeNodeItem: React.FC<{
             {getFileIcon(node.name)}
           </>
         )}
-        <span className="truncate flex-1" title={node.path}>
+        <span className="truncate flex-1 font-mono text-[11px]" title={node.path}>
           {node.name}
         </span>
       </button>
@@ -168,28 +172,58 @@ export const FileExplorerPane: React.FC<FileExplorerPaneProps> = ({
   activeFilePath,
   onSelectFile,
   isLoading,
+  isCollapsed = false,
+  totalFilesCount,
 }) => {
+  // Compute total file count if not provided
+  const countFiles = (nodes: FileNode[]): number => {
+    let count = 0;
+    for (const node of nodes) {
+      if (!node.isDirectory) count++;
+      if (node.children) count += countFiles(node.children);
+    }
+    return count;
+  };
+  const filesCount = totalFilesCount ?? countFiles(tree);
+
+  if (isCollapsed) {
+    return (
+      <div className="h-full w-full flex flex-col items-center py-3 bg-[var(--landing-surface-1)] border-r border-[var(--landing-border)] select-none">
+        <div className="p-2 text-[var(--landing-text-secondary)] hover:text-white" title="Files (Collapsed)">
+          <Layers className="w-4 h-4 text-[var(--landing-accent)]" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-full flex flex-col bg-surface-base select-none">
-      {/* 40px Header matching --panel-header-h token */}
-      <div className="h-[var(--panel-header-h,40px)] min-h-[40px] max-h-[40px] box-border px-3 border-b border-border-subtle flex items-center justify-between bg-surface-base shrink-0">
-        <span className="text-[12px] font-sans font-semibold text-text-tertiary uppercase tracking-wider">
-          Files
+    <div className="h-full flex flex-col bg-[var(--landing-surface-1)] border-r border-[var(--landing-border)] select-none overflow-hidden">
+      {/* ── Panel Header (40px) ────────────────────────────────────────────── */}
+      <div className="h-10 min-h-10 max-h-10 box-border px-3.5 border-b border-[var(--landing-border)] flex items-center justify-between bg-[var(--landing-bg-ink)] shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-[var(--landing-accent)]" />
+          <span className="text-xs font-mono font-semibold text-[var(--landing-text-primary)] uppercase tracking-wider">
+            FILES
+          </span>
+        </div>
+        <span className="text-[11px] font-mono text-[var(--landing-text-secondary)] opacity-60">
+          {filesCount}
         </span>
       </div>
 
       <div
         role="tree"
         aria-label="Project Files"
-        className="flex-1 overflow-y-auto p-1.5 space-y-0.5"
+        data-lenis-prevent
+        className="flex-1 overflow-y-auto p-2 space-y-0.5"
       >
         {isLoading ? (
-          <div className="p-3 text-[12px] font-sans text-text-tertiary">
-            Loading project files...
+          <div className="p-3 text-xs font-mono text-[var(--landing-text-secondary)]">
+            loading file tree...
           </div>
         ) : tree.length === 0 ? (
-          <div className="p-3 text-[12px] font-sans text-text-tertiary">
-            No files found in workspace
+          <div className="p-3 text-xs font-mono text-[var(--landing-text-secondary)]">
+            no files in workspace
           </div>
         ) : (
           tree.map((node) => (

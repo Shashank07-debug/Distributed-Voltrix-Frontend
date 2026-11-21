@@ -14,16 +14,50 @@ import {
   Lock,
   AlertTriangle,
   RotateCcw,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { chatApi, ChatMessage, ChatEvent } from '../../api/chat';
 import { ProjectRole } from '../../api/workspace';
-import { AiThinkingOrb } from '../canvas/AiThinkingOrb';
+import { toast } from 'sonner';
 
 interface ChatPaneProps {
   projectId: string;
   role: ProjectRole;
   onFileEdited?: (filePath: string) => void;
+  isStreamingState?: boolean;
 }
+
+/* ─── Code Block with Copy Button ─────────────────────────────────────────── */
+const CodeBlock: React.FC<{ language?: string; value: string }> = ({ language, value }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    toast.success('Code copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="my-2 rounded-xl border border-[var(--landing-border)] bg-[var(--landing-bg-ink)] overflow-hidden font-mono text-xs">
+      <div className="px-3 py-1.5 bg-[var(--landing-surface-1)] border-b border-[var(--landing-border)] flex items-center justify-between text-[11px] text-[var(--landing-text-secondary)]">
+        <span>{language || 'code'}</span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 hover:text-white transition-colors"
+        >
+          {copied ? <Check className="w-3 h-3 text-[var(--landing-accent)]" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? 'copied' : 'copy'}</span>
+        </button>
+      </div>
+      <pre className="p-3 overflow-x-auto text-gray-200 leading-relaxed font-mono text-[11px]" data-lenis-prevent>
+        <code>{value}</code>
+      </pre>
+    </div>
+  );
+};
 
 export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdited }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -34,6 +68,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isReadOnly = role === 'VIEWER';
 
@@ -49,7 +84,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
         }
       })
       .catch(() => {
-        // Default initial welcome message if history is empty
         if (isMounted) setMessages([]);
       })
       .finally(() => {
@@ -84,7 +118,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
       setInputMessage('');
     }
 
-    // Append user message immediately
     const userMsgId = `user-${Date.now()}`;
     const assistantMsgId = `assistant-${Date.now()}`;
 
@@ -120,7 +153,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
             return prev.map((msg) => {
               if (msg.id === assistantMsgId) {
                 const updatedEvents = [...msg.events, event];
-                // Trigger file tree refresh if event is FILE_EDIT
                 if (event.type === 'FILE_EDIT' && event.filePath && onFileEdited) {
                   onFileEdited(event.filePath);
                 }
@@ -137,9 +169,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
             });
           });
         },
-        onComplete: () => {
-          // Handled in finally block
-        },
+        onComplete: () => {},
         onError: (err: Error) => {
           setMessages((prev) =>
             prev.map((msg) => {
@@ -175,7 +205,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
 
   const handleRetry = (assistantMsgIndex: number) => {
     if (isStreaming) return;
-    // Find preceding user prompt
     let promptToRetry = '';
     for (let i = assistantMsgIndex - 1; i >= 0; i--) {
       if (messages[i].role === 'USER') {
@@ -208,19 +237,20 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
       case 'THOUGHT': {
         const isCollapsed = activeThoughtCollapsed[event.id] ?? true;
         return (
-          <div key={event.id} className="my-2 rounded-xl bg-white/5 border border-white/10 overflow-hidden text-xs">
+          <div key={event.id} className="my-2 rounded-xl bg-[var(--landing-surface-2)] border border-[var(--landing-border)] overflow-hidden text-xs">
             <button
+              type="button"
               onClick={() => toggleThought(event.id)}
-              className="w-full px-3 py-1.5 flex items-center justify-between bg-white/5 text-voltrix-muted hover:text-white font-mono transition-colors"
+              className="w-full px-3 py-1.5 flex items-center justify-between text-[var(--landing-text-secondary)] hover:text-white font-mono text-[11px] transition-colors"
             >
               <div className="flex items-center gap-1.5">
-                <Brain className="w-3.5 h-3.5 text-voltrix-violet-light" />
-                <span>Thinking Process</span>
+                <Brain className="w-3.5 h-3.5 text-[var(--landing-accent)]" />
+                <span>reasoning trace</span>
               </div>
               {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
             {!isCollapsed && (
-              <div className="p-3 font-mono text-[11px] text-gray-400 bg-[#070709]/80 border-t border-white/5 leading-relaxed whitespace-pre-wrap">
+              <div className="p-3 font-mono text-[11px] text-[var(--landing-text-secondary)] bg-[var(--landing-bg-ink)] border-t border-[var(--landing-border)] leading-relaxed whitespace-pre-wrap">
                 {event.content}
               </div>
             )}
@@ -232,11 +262,11 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
         return (
           <div
             key={event.id}
-            className="my-2 p-2.5 rounded-xl bg-voltrix-cyan/10 border border-voltrix-cyan/30 flex items-center justify-between text-xs"
+            className="my-2 p-2.5 rounded-xl bg-[var(--landing-accent-subtle)] border border-[var(--landing-accent)]/30 flex items-center justify-between text-xs font-mono"
           >
-            <div className="flex items-center gap-2 font-mono text-voltrix-cyan-light">
-              <FileCode className="w-4 h-4 text-voltrix-cyan" />
-              <span>Edited <strong className="text-white">{event.filePath || 'file'}</strong></span>
+            <div className="flex items-center gap-2 text-[var(--landing-accent)]">
+              <FileCode className="w-4 h-4" />
+              <span>edited <strong className="text-[var(--landing-text-primary)]">{event.filePath || 'file'}</strong></span>
             </div>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
@@ -244,8 +274,8 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
 
       case 'TOOL_LOG':
         return (
-          <div key={event.id} className="my-1.5 px-2.5 py-1 rounded-lg bg-[#0D0E15] border border-white/5 font-mono text-[11px] text-gray-400 flex items-center gap-2">
-            <Terminal className="w-3 h-3 text-voltrix-muted" />
+          <div key={event.id} className="my-1.5 px-2.5 py-1 rounded-lg bg-[var(--landing-bg-ink)] border border-[var(--landing-border)] font-mono text-[11px] text-[var(--landing-text-secondary)] flex items-center gap-2">
+            <Terminal className="w-3 h-3 text-[var(--landing-accent)]" />
             <span className="truncate">{event.content}</span>
           </div>
         );
@@ -254,9 +284,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
         return (
           <div
             key={event.id}
-            className="my-1.5 px-2.5 py-1.5 rounded-lg bg-voltrix-cyan/5 border border-voltrix-cyan/20 font-mono text-[11px] text-voltrix-cyan-light flex items-center gap-2 animate-pulse"
+            className="my-1.5 px-2.5 py-1.5 rounded-lg bg-[var(--landing-surface-2)] border border-[var(--landing-border)] font-mono text-[11px] text-[var(--landing-accent)] flex items-center gap-2 animate-pulse"
           >
-            <Sparkles className="w-3.5 h-3.5 text-voltrix-cyan shrink-0" />
+            <Sparkles className="w-3.5 h-3.5 text-[var(--landing-accent)] shrink-0" />
             <span className="truncate">{event.content}</span>
           </div>
         );
@@ -264,38 +294,72 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
       case 'MESSAGE':
       default:
         return (
-          <div key={event.id} className="prose prose-invert prose-sm max-w-none text-gray-200 leading-relaxed">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{event.content}</ReactMarkdown>
+          <div key={event.id} className="prose prose-invert prose-sm max-w-none text-[var(--landing-text-primary)] leading-relaxed font-sans text-xs">
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={{
+                code({ className, children, ...props }) {
+                  const match = /language-(\w+)/.exec(className || '');
+                  const isInline = !match && !String(children).includes('\n');
+                  if (isInline) {
+                    return (
+                      <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[11px] text-[var(--landing-accent)]" {...props}>
+                        {children}
+                      </code>
+                    );
+                  }
+                  return (
+                    <CodeBlock
+                      language={match ? match[1] : undefined}
+                      value={String(children).replace(/\n$/, '')}
+                    />
+                  );
+                },
+              }}
+            >
+              {event.content}
+            </ReactMarkdown>
           </div>
         );
     }
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#070709] border-r border-voltrix-border">
-      {/* Header */}
-      <div className="h-[var(--panel-header-h,40px)] min-h-[40px] max-h-[40px] box-border px-3.5 border-b border-voltrix-border flex items-center justify-between bg-voltrix-card/50 shrink-0">
+    <div className="flex flex-col h-full bg-[var(--landing-surface-1)] border-r border-[var(--landing-border)] overflow-hidden">
+      {/* ── Panel Header (40px) matching unified header spec ───────────────── */}
+      <div className="h-10 min-h-10 max-h-10 box-border px-3.5 border-b border-[var(--landing-border)] flex items-center justify-between bg-[var(--landing-bg-ink)] shrink-0 select-none">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-voltrix-cyan" />
-          <span className="font-display font-semibold text-xs text-white">Voltrix AI Builder</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${isStreaming ? 'bg-[var(--landing-accent)] animate-ping' : 'bg-[var(--landing-accent)]'}`} />
+          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--landing-text-primary)]">
+            AI BUILDER
+          </span>
         </div>
-        {isStreaming && <AiThinkingOrb size="sm" />}
+        {isStreaming && (
+          <span className="text-[10px] font-mono text-[var(--landing-accent)] animate-pulse">
+            generating...
+          </span>
+        )}
       </div>
 
-      {/* Messages List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* ── Messages Stream Container ──────────────────────────────────────── */}
+      <div
+        data-lenis-prevent
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
         {isLoadingHistory ? (
-          <div className="flex items-center justify-center h-32 text-xs font-mono text-voltrix-muted">
-            Loading prompt trajectory...
+          <div className="flex items-center justify-center h-32 text-xs font-mono text-[var(--landing-text-secondary)]">
+            loading prompt trajectory...
           </div>
         ) : messages.length === 0 ? (
-          <div className="text-center my-12 px-4">
-            <div className="w-12 h-12 rounded-2xl bg-voltrix-violet/10 border border-voltrix-violet/30 flex items-center justify-center mx-auto mb-3">
-              <Sparkles className="w-6 h-6 text-voltrix-cyan" />
+          <div className="text-center my-10 px-4">
+            <div className="w-12 h-12 rounded-2xl bg-[var(--landing-accent-subtle)] border border-[var(--landing-accent)]/30 flex items-center justify-center mx-auto mb-3">
+              <Sparkles className="w-6 h-6 text-[var(--landing-accent)]" />
             </div>
-            <h4 className="font-display text-sm font-bold text-white mb-1">What application shall we build?</h4>
-            <p className="text-xs text-voltrix-muted">
-              Describe your feature, layout or full stack application. Voltrix AI will create files in your project workspace.
+            <h4 className="font-display text-sm font-bold text-white mb-1">
+              what shall we build?
+            </h4>
+            <p className="text-xs text-[var(--landing-text-secondary)] leading-relaxed max-w-xs mx-auto">
+              describe features, backend endpoints, or UI components. voltrix ai will scaffold and edit files live.
             </p>
           </div>
         ) : (
@@ -305,14 +369,14 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
               className={`flex flex-col ${msg.role === 'USER' ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[88%] rounded-2xl p-3.5 text-xs ${
+                className={`max-w-[90%] rounded-2xl p-3.5 text-xs ${
                   msg.role === 'USER'
-                    ? 'bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white shadow-lg'
-                    : 'bg-voltrix-card border border-voltrix-border text-gray-200'
+                    ? 'bg-[var(--landing-surface-2)] border border-[var(--landing-border-strong)] text-[var(--landing-text-primary)] font-medium'
+                    : 'bg-[var(--landing-surface-2)]/60 border border-[var(--landing-border)] text-[var(--landing-text-primary)]'
                 }`}
               >
                 {msg.role === 'USER' ? (
-                  <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                  <p className="whitespace-pre-wrap leading-relaxed font-sans">{msg.content}</p>
                 ) : (
                   <div>
                     {msg.events && msg.events.length > 0 ? (
@@ -321,19 +385,19 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
                         .map(renderEvent)
                     ) : (
                       msg.content && (
-                        <div className="prose prose-invert prose-sm max-w-none text-gray-200">
+                        <div className="prose prose-invert prose-sm max-w-none text-[var(--landing-text-primary)] font-sans text-xs">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                         </div>
                       )
                     )}
 
-                    {/* Render Assistant Error Bubble if stream failed */}
+                    {/* Assistant Error State with Retry Button */}
                     {msg.error && (
-                      <div className="mt-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 flex flex-col gap-2">
+                      <div className="mt-2.5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 flex flex-col gap-2">
                         <div className="flex items-start gap-2 text-xs">
-                          <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                           <div className="flex-1 font-mono text-[11px] leading-relaxed">
-                            <span className="font-semibold text-rose-200">Generation Failed: </span>
+                            <span className="font-semibold text-red-200">generation failed: </span>
                             <span>{msg.error}</span>
                           </div>
                         </div>
@@ -342,10 +406,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
                             type="button"
                             onClick={() => handleRetry(idx)}
                             disabled={isStreaming}
-                            className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-rose-200 text-xs font-medium flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                            className="px-3 py-1 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-200 text-xs font-mono flex items-center gap-1.5 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
-                            <span>Retry</span>
+                            <span>retry</span>
                           </button>
                         </div>
                       </div>
@@ -359,29 +423,31 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
         <div ref={chatBottomRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 border-t border-voltrix-border bg-voltrix-card/80">
+      {/* ── Sticky Composer ────────────────────────────────────────────────── */}
+      <div className="p-3 border-t border-[var(--landing-border)] bg-[var(--landing-bg-ink)]">
         {isReadOnly ? (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-voltrix-muted">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-xs font-mono text-[var(--landing-text-secondary)]">
             <Lock className="w-4 h-4 text-amber-400" />
-            <span>Read-only role (VIEWER). You cannot send AI prompts.</span>
+            <span>read-only role (VIEWER). prompting disabled.</span>
           </div>
         ) : (
           <div className="relative flex items-end gap-2">
             <textarea
+              ref={textareaRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isStreaming}
-              placeholder="Ask Voltrix AI to build or edit code... (Enter to send, Shift+Enter for newline)"
+              placeholder="Ask Voltrix AI to build or edit code... (Enter to send)"
               rows={2}
-              className="w-full bg-[#070709] border border-voltrix-border rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:border-voltrix-cyan focus:outline-none resize-none transition-all disabled:opacity-60"
+              className="w-full bg-[var(--landing-surface-1)] border border-[var(--landing-border)] hover:border-[var(--landing-border-hover)] rounded-xl p-3 text-base sm:text-xs text-[var(--landing-text-primary)] placeholder:text-[var(--landing-text-secondary)] placeholder:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent-ring)] resize-none transition-all disabled:opacity-60 font-sans"
+              style={{ fontSize: '16px' }}
             />
             {isStreaming ? (
               <button
                 onClick={handleStop}
                 type="button"
-                className="p-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white transition-colors flex items-center justify-center"
+                className="h-11 w-11 rounded-xl bg-red-500 hover:bg-red-600 text-white transition-colors flex items-center justify-center shrink-0 cursor-pointer shadow-sm"
                 title="Stop generation"
               >
                 <Square className="w-4 h-4 fill-current" />
@@ -391,9 +457,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({ projectId, role, onFileEdite
                 onClick={() => handleSend()}
                 disabled={!inputMessage.trim()}
                 type="button"
-                className="p-3 rounded-xl bg-gradient-to-r from-voltrix-violet to-voltrix-cyan text-white hover:opacity-90 disabled:opacity-40 transition-all flex items-center justify-center shadow-lg"
+                className="h-11 w-11 rounded-xl bg-[var(--landing-accent)] hover:bg-[var(--landing-accent-hover)] text-[#090D0F] transition-all flex items-center justify-center shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm active:scale-95 cursor-pointer"
+                title="Send instruction to AI"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-4 h-4 text-[#090D0F]" />
               </button>
             )}
           </div>
