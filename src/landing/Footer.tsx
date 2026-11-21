@@ -53,26 +53,26 @@ export const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="border-t border-[var(--landing-border)] bg-[var(--landing-surface-1)] text-xs text-[var(--landing-text-muted)] select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
+    <footer className="border-t border-[var(--landing-border)] bg-[var(--landing-bg-ink)] text-xs text-[var(--landing-text-muted)] select-none overflow-hidden relative">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
-          {/* Brand info (2 Cols) */}
+          {/* Brand Column (2 Cols) */}
           <div className="col-span-2 space-y-3">
             <Link to="/" className="inline-block" aria-label="Voltrix home">
               <Logo variant="full" size={24} />
             </Link>
             <p className="text-xs text-[var(--landing-text-secondary)] leading-relaxed max-w-sm">
-              Autonomous application builder transforming natural language prompts into live, verifiable code.
+              autonomous application builder for makers who want to build and ship fast.
             </p>
             <div className="pt-2 font-mono text-[11px] text-[var(--landing-text-muted)]">
-              &copy; {new Date().getFullYear()} Voltrix Platform Inc.
+              made for the late-night builders &copy; {new Date().getFullYear()}
             </div>
           </div>
 
-          {/* 4 Link columns */}
+          {/* 4 Navigation Link Columns */}
           {columns.map((col, idx) => (
             <div key={idx} className="space-y-2.5">
-              <div className="font-mono text-[11px] uppercase tracking-wider text-[var(--landing-text-primary)] font-semibold">
+              <div className="font-mono text-[11px] uppercase tracking-wider text-[var(--landing-text-primary)] font-bold">
                 {col.title}
               </div>
               <ul className="space-y-1.5">
@@ -81,7 +81,7 @@ export const Footer: React.FC = () => {
                     {link.to ? (
                       <Link
                         to={link.to}
-                        className="text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
+                        className="text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
                       >
                         {link.label}
                       </Link>
@@ -95,7 +95,7 @@ export const Footer: React.FC = () => {
                             if (el) el.scrollIntoView({ behavior: 'smooth' });
                           }
                         }}
-                        className="text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
+                        className="text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
                       >
                         {link.label}
                       </a>
@@ -107,18 +107,27 @@ export const Footer: React.FC = () => {
           ))}
         </div>
 
-        {/* Bottom Bar */}
-        <div className="mt-12 pt-6 border-t border-[var(--landing-border)] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-[11px]">
-          <div>Distributed application synthesis on isolated container sandboxes.</div>
+        {/* Bottom Bar with Human Sign-off */}
+        <div className="mt-14 pt-6 border-t border-[var(--landing-border)] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-[11px]">
+          <div>built with react, typescript, and caffeine.</div>
           <div className="flex items-center gap-4 text-[var(--landing-text-muted)]">
-            <a href="#overview" className="hover:text-[var(--landing-text-primary)] transition-colors">
-              Privacy Notice
+            <a href="#overview" className="hover:text-[var(--landing-accent)] transition-colors">
+              privacy
             </a>
-            <a href="#overview" className="hover:text-[var(--landing-text-primary)] transition-colors">
-              Terms of Service
+            <a href="#overview" className="hover:text-[var(--landing-accent)] transition-colors">
+              terms
             </a>
           </div>
         </div>
+      </div>
+
+      {/* Giant Cropped Wordmark Across Bottom */}
+      <div
+        className="w-full text-center font-black tracking-tighter text-[#11171A] text-[18vw] leading-none select-none pointer-events-none -mb-8 sm:-mb-14 overflow-hidden"
+        style={{ fontFamily: 'var(--font-display)' }}
+        aria-hidden="true"
+      >
+        VOLTRIX
       </div>
     </footer>
   );

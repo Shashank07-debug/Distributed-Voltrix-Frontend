@@ -2,56 +2,47 @@ import React from 'react';
 import { Caret } from '../components/Caret';
 import { Button } from '../components/Button';
 import { Reveal } from '../components/Reveal';
-import { ArrowRight, Cpu } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export const FinalCta: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
   const authenticated = isAuthenticated();
 
-  const handleScrollToArch = (e: React.MouseEvent) => {
-    e.preventDefault();
-    const el = document.getElementById('architecture');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-      window.history.pushState(null, '', '#architecture');
-    }
-  };
-
   return (
-    <section className="py-20 sm:py-28 border-t border-[var(--landing-border)] bg-[var(--landing-surface-1)]">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
+    /* Loudest Moment: Full-Bleed Lime Band */
+    <section className="py-24 sm:py-32 bg-[var(--landing-accent)] text-[#090D0F] border-t-2 border-[#090D0F] select-none">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-7">
         <Reveal>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-[var(--landing-text-primary)] leading-tight">
-            Describe it. Ship it
-            <Caret />
+          <div className="inline-block px-3.5 py-1 rounded-full text-xs font-mono font-bold tracking-tight bg-[#090D0F] text-[var(--landing-accent)] uppercase mb-2">
+            ship it tonight
+          </div>
+          <h2
+            className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#090D0F] leading-[0.98]"
+            style={{ fontFamily: 'var(--font-display)' }}
+          >
+            got an idea? type it in
+            <Caret variant="dark" />
           </h2>
         </Reveal>
 
         <Reveal delayMs={100}>
-          <p className="text-sm sm:text-base text-[var(--landing-text-secondary)] max-w-xl mx-auto leading-relaxed">
-            Experience autonomous application generation built with developer precision. Monaco editor inspection, instant file trees, and isolated live previews.
+          <p className="text-base sm:text-lg text-[#253037] max-w-xl mx-auto leading-relaxed font-sans font-medium">
+            describe what you want to build and watch voltrix synthesize complete, editable react code in front of your eyes.
           </p>
         </Reveal>
 
-        <Reveal delayMs={180}>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-4">
+        <Reveal delayMs={160}>
+          <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
             <Button
               to={authenticated ? '/projects' : '/signup'}
-              variant="primary"
-              size="lg"
-            >
-              <span>Launch App Builder</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Button
-              href="#architecture"
-              onClick={handleScrollToArch}
               variant="secondary"
               size="lg"
+              magnetic
+              className="!bg-[#090D0F] !text-[var(--landing-accent)] !border-[#090D0F] hover:!bg-[#152026] text-base px-8 h-13 shadow-xl"
             >
-              <Cpu className="w-4 h-4 text-[var(--landing-accent)]" />
-              <span>Explore Architecture</span>
+              <span>Launch App Builder</span>
+              <ArrowRight className="w-4 h-4 text-[var(--landing-accent)]" />
             </Button>
           </div>
         </Reveal>

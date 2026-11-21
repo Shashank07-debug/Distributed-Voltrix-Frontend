@@ -6,7 +6,7 @@ import { NavDropdown } from './NavDropdown';
 import { MobileDrawer } from './MobileDrawer';
 import { Caret } from '../components/Caret';
 import { Button } from '../components/Button';
-import { Menu } from 'lucide-react';
+import { Menu, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 
 export const Navbar: React.FC = () => {
@@ -25,7 +25,7 @@ export const Navbar: React.FC = () => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY >= 16);
+      setIsScrolled(window.scrollY >= 20);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -33,7 +33,6 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -50,23 +49,24 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header
-        className={`sticky top-0 z-40 w-full transition-[background-color,border-color,height] duration-200 select-none ${
-          isScrolled
-            ? 'h-16 bg-[#0B0B0C]/80 border-b border-[var(--landing-border)] backdrop-blur-md shadow-sm'
-            : 'h-[72px] bg-transparent border-b border-transparent'
-        }`}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between">
+      {/* Floating Pill Navbar */}
+      <div className="fixed top-3 sm:top-4 inset-x-0 mx-auto max-w-5xl px-3 sm:px-4 z-50 pointer-events-none">
+        <header
+          className={`pointer-events-auto mx-auto rounded-full border transition-all duration-200 px-3 sm:px-5 flex items-center justify-between select-none ${
+            isScrolled
+              ? 'h-14 bg-[#090D0F]/90 border-[var(--landing-accent)]/20 shadow-xl backdrop-blur-xl'
+              : 'h-14 sm:h-16 bg-[#090D0F]/75 border-[var(--landing-border)] backdrop-blur-md shadow-md'
+          }`}
+        >
           {/* Left Zone: Logo with Hover Caret */}
           <Link
             to={authenticated ? '/projects' : '/'}
-            className="flex items-center gap-2 group rounded-[var(--landing-radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
+            className="flex items-center gap-2 group rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
             onMouseEnter={() => setIsLogoHovered(true)}
             onMouseLeave={() => setIsLogoHovered(false)}
             aria-label="Voltrix home"
           >
-            <Logo variant="full" size={26} />
+            <Logo variant="full" size={24} />
             <span
               className={`transition-opacity duration-150 ${
                 isLogoHovered ? 'opacity-100' : 'opacity-0'
@@ -96,18 +96,19 @@ export const Navbar: React.FC = () => {
           </nav>
 
           {/* Right Zone: Action Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2">
             {authenticated ? (
-              <Button to="/projects" variant="primary" size="md">
-                Dashboard
+              <Button to="/projects" variant="primary" size="sm" magnetic>
+                <span>Workspace</span>
               </Button>
             ) : (
               <>
-                <Button to="/login" variant="ghost" size="md">
+                <Button to="/login" variant="ghost" size="sm">
                   Log in
                 </Button>
-                <Button to="/signup" variant="primary" size="md">
-                  Get started
+                <Button to="/signup" variant="primary" size="sm" magnetic>
+                  <span>Get started</span>
+                  <Sparkles className="w-3.5 h-3.5 text-[#090D0F]" />
                 </Button>
               </>
             )}
@@ -119,13 +120,13 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => setIsMobileDrawerOpen(true)}
               aria-label="Open menu"
-              className="p-2 rounded-[var(--landing-radius-sm)] text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
+              className="p-1.5 rounded-full text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
             >
               <Menu className="w-5 h-5" />
             </button>
           </div>
-        </div>
-      </header>
+        </header>
+      </div>
 
       {/* Mobile Drawer */}
       <MobileDrawer

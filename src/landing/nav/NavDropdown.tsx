@@ -35,7 +35,6 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
     }, 200);
   };
 
-  // Keyboard navigation within menu
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
       if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
@@ -74,7 +73,6 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
     }
   };
 
-  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
@@ -96,15 +94,15 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
         aria-controls={`nav-menu-${menu.id}`}
         onClick={() => (isOpen ? onClose() : onOpen())}
         onKeyDown={handleKeyDown}
-        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-[var(--landing-radius-sm)] transition-colors select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)] ${
+        className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full transition-colors select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)] ${
           isOpen
-            ? 'text-[var(--landing-text-primary)] bg-[var(--landing-surface-2)]'
-            : 'text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-1)]'
+            ? 'text-[var(--landing-text-primary)] bg-[var(--landing-surface-2)] shadow-sm'
+            : 'text-[var(--landing-text-secondary)] hover:text-[var(--landing-text-primary)] hover:bg-[var(--landing-surface-2)]'
         }`}
       >
         <span>{menu.label}</span>
         <ChevronDown
-          className={`w-3.5 h-3.5 transition-transform duration-200 text-[var(--landing-text-muted)] ${
+          className={`w-3 h-3 transition-transform duration-200 text-[var(--landing-text-muted)] ${
             isOpen ? 'rotate-180 text-[var(--landing-accent)]' : ''
           }`}
           aria-hidden="true"
@@ -117,10 +115,10 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
           id={`nav-menu-${menu.id}`}
           role="menu"
           aria-labelledby={`nav-trigger-${menu.id}`}
-          className={`absolute left-0 top-full pt-2 z-50 ${menu.widthClass || 'w-96'}`}
+          className={`absolute left-0 top-full pt-3 z-50 ${menu.widthClass || 'w-96'}`}
           onKeyDown={handleKeyDown}
         >
-          <div className="bg-[var(--landing-surface-2)] border border-[var(--landing-border)] rounded-[var(--landing-radius-lg)] p-3 shadow-xl backdrop-blur-xl animate-in fade-in-0 slide-in-from-top-2 duration-180">
+          <div className="bg-[var(--landing-surface-1)] border border-[var(--landing-border)] rounded-[24px] p-4 shadow-2xl backdrop-blur-2xl animate-in fade-in-0 slide-in-from-top-2 duration-180">
             <div
               className={`grid gap-4 ${
                 menu.groups.length > 1 ? `grid-cols-${menu.groups.length}` : 'grid-cols-1'
@@ -129,7 +127,7 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
               {menu.groups.map((group, groupIdx) => (
                 <div key={groupIdx} className="space-y-1.5">
                   {group.groupName && (
-                    <div className="px-2.5 py-1 text-[11px] font-mono text-[var(--landing-text-muted)] tracking-wider uppercase">
+                    <div className="px-3 py-1 text-[10px] font-mono font-bold text-[var(--landing-accent)] tracking-wider uppercase">
                       {group.groupName}
                     </div>
                   )}
@@ -137,15 +135,15 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
                     {group.items.map((item, itemIdx) => {
                       const Icon = item.icon;
                       const content = (
-                        <div className="flex items-start gap-3 p-2 rounded-[var(--landing-radius-md)] hover:bg-[var(--landing-surface-3)] transition-colors group">
-                          <div className="w-8 h-8 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-border)] flex items-center justify-center shrink-0 text-[var(--landing-text-secondary)] group-hover:text-[var(--landing-accent)] group-hover:border-[var(--landing-accent-subtle)] transition-colors">
+                        <div className="flex items-start gap-3 p-2.5 rounded-[16px] hover:bg-[var(--landing-accent-subtle)] hover:border-[var(--landing-accent)]/20 border border-transparent transition-colors group">
+                          <div className="w-8 h-8 rounded-[10px] bg-[var(--landing-surface-2)] border border-[var(--landing-border)] flex items-center justify-center shrink-0 text-[var(--landing-text-secondary)] group-hover:text-[var(--landing-accent)] group-hover:border-[var(--landing-accent)] transition-colors">
                             <Icon className="w-4 h-4" />
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-medium text-[var(--landing-text-primary)] group-hover:text-[var(--landing-accent)] transition-colors">
+                            <div className="text-xs font-semibold text-[var(--landing-text-primary)] group-hover:text-[var(--landing-accent)] transition-colors">
                               {item.title}
                             </div>
-                            <p className="text-xs text-[var(--landing-text-muted)] line-clamp-1 mt-0.5 leading-relaxed">
+                            <p className="text-[11px] text-[var(--landing-text-muted)] line-clamp-1 mt-0.5 leading-relaxed">
                               {item.description}
                             </p>
                           </div>
@@ -160,7 +158,7 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
                             role="menuitem"
                             tabIndex={0}
                             onClick={onClose}
-                            className="block rounded-[var(--landing-radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
+                            className="block rounded-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
                           >
                             {content}
                           </Link>
@@ -180,7 +178,7 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
                               if (el) el.scrollIntoView({ behavior: 'smooth' });
                             }
                           }}
-                          className="block rounded-[var(--landing-radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
+                          className="block rounded-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--landing-accent)]"
                         >
                           {content}
                         </a>
