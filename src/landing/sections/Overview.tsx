@@ -1,7 +1,8 @@
 import React from 'react';
 import { SectionHeading } from '../components/SectionHeading';
 import { Reveal } from '../components/Reveal';
-import { FolderTree, Code2, Users2, Sparkles, Terminal, Rocket } from 'lucide-react';
+import { TypeText } from '../components/TypeText';
+import { FolderTree, Code2, Rocket } from 'lucide-react';
 
 export const Overview: React.FC = () => {
   const personas = [
@@ -33,17 +34,20 @@ export const Overview: React.FC = () => {
     <section id="overview" className="py-20 sm:py-24 border-t border-[var(--landing-border)]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
         <Reveal>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <SectionHeading
-              eyebrow="zero fluff"
-              title="built for people who make things"
-              highlightWord="make"
-              description="no enterprise gatekeeping. describe what you want, inspect the files, tweak the code, and show it to the world."
-            />
+          {/* Header clean 2-column layout on desktop, stacked below 900px */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+            <div className="lg:col-span-8">
+              <SectionHeading
+                eyebrow="zero fluff"
+                title="built for people who make things"
+                highlightWord="make"
+                description="no enterprise gatekeeping. describe what you want, inspect the files, tweak the code, and show it to the world."
+              />
+            </div>
 
-            {/* "Made For" Persona Chips */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-mono text-[var(--landing-text-muted)] mr-1">
+            {/* Persona Chips typing in sequence, 120ms apart */}
+            <div className="lg:col-span-4 flex flex-wrap items-center gap-2 justify-start lg:justify-end">
+              <span className="text-xs font-mono text-[var(--landing-text-muted)] mr-1 shrink-0">
                 made for:
               </span>
               {personas.map((persona, i) => (
@@ -51,7 +55,12 @@ export const Overview: React.FC = () => {
                   key={i}
                   className="px-3 py-1 rounded-full text-xs font-mono font-medium border border-[var(--landing-border-strong)] bg-[var(--landing-surface-2)] text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] hover:border-[var(--landing-accent)] transition-colors select-none"
                 >
-                  {persona}
+                  <TypeText
+                    text={persona}
+                    profile="chip"
+                    delayMs={i * 120}
+                    showCaret={false}
+                  />
                 </span>
               ))}
             </div>
@@ -73,10 +82,10 @@ export const Overview: React.FC = () => {
                       className="text-lg font-bold text-[var(--landing-text-primary)]"
                       style={{ fontFamily: 'var(--font-display)' }}
                     >
-                      {item.title}
+                      <TypeText text={item.title} profile="chip" showCaret={false} />
                     </h3>
                     <p className="text-sm text-[var(--landing-text-secondary)] leading-relaxed">
-                      {item.description}
+                      <TypeText text={item.description} profile="body" showCaret={false} delayMs={80} />
                     </p>
                   </div>
                 </div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SectionHeading } from '../components/SectionHeading';
 import { Squiggle } from '../components/Squiggle';
 import { Reveal } from '../components/Reveal';
+import { TypeText } from '../components/TypeText';
 import { MessageSquareCode, Cpu, SearchCode, Rocket } from 'lucide-react';
 
 export const Workflow: React.FC = () => {
@@ -39,7 +40,6 @@ export const Workflow: React.FC = () => {
   ];
 
   return (
-    /* Full-bleed Bone Contrast Band */
     <section id="workflow" className="py-20 sm:py-28 bg-[var(--landing-bg-bone)] text-[#090D0F]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-14">
         <Reveal>
@@ -93,7 +93,12 @@ export const Workflow: React.FC = () => {
                           className="text-xl font-bold text-[#090D0F]"
                           style={{ fontFamily: 'var(--font-display)' }}
                         >
-                          {step.title}
+                          <TypeText
+                            text={step.title}
+                            profile="heading"
+                            delayMs={idx * 140}
+                            showCaret={false}
+                          />
                         </h3>
                         {isActive && <Squiggle color="dark" />}
                       </div>
