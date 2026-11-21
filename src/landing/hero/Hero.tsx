@@ -1,14 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HeroDemo } from './HeroDemo';
-import { Caret } from '../components/Caret';
-import { Squiggle } from '../components/Squiggle';
+import { HeroHeading } from './HeroHeading';
 import { Sticker } from '../components/Sticker';
 import { Button } from '../components/Button';
-import { TypeText } from '../components/TypeText';
 import { ArrowRight, Sparkles, Star } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
-
-const CYCLING_WORDS = ['vision', 'idea', 'app', 'side project', 'startup'];
 
 export const Hero: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
@@ -16,10 +12,6 @@ export const Hero: React.FC = () => {
 
   const [parallax, setParallax] = useState({ x: 0, y: 0 });
   const [introStep, setIntroStep] = useState(0); // 0=navbar, 1=eyebrow, 2=H1, 3=sub, 4=ctas, 5=demo, 6=stickers/finished
-  const [activeWordIdx, setActiveWordIdx] = useState(0);
-  const [cyclingWord, setCyclingWord] = useState('vision');
-  const [isCyclingPaused, setIsCyclingPaused] = useState(false);
-  const [hasIntroFinished, setHasIntroFinished] = useState(false);
 
   const reducedMotion =
     typeof window !== 'undefined' &&
@@ -29,23 +21,18 @@ export const Hero: React.FC = () => {
   useEffect(() => {
     if (reducedMotion) {
       setIntroStep(6);
-      setHasIntroFinished(true);
       return;
     }
 
     const t1 = setTimeout(() => setIntroStep(1), 150); // eyebrow
-    const t2 = setTimeout(() => setIntroStep(2), 500); // H1
-    const t3 = setTimeout(() => setIntroStep(3), 2200); // sub
-    const t4 = setTimeout(() => setIntroStep(4), 3000); // CTAs
-    const t5 = setTimeout(() => setIntroStep(5), 3300); // demo window
-    const t6 = setTimeout(() => {
-      setIntroStep(6); // stickers
-      setHasIntroFinished(true);
-    }, 3600);
+    const t2 = setTimeout(() => setIntroStep(2), 400); // H1
+    const t3 = setTimeout(() => setIntroStep(3), 1400); // sub
+    const t4 = setTimeout(() => setIntroStep(4), 1800); // CTAs
+    const t5 = setTimeout(() => setIntroStep(5), 2000); // demo window
+    const t6 = setTimeout(() => setIntroStep(6), 2400); // stickers
 
     const handleSkip = () => {
       setIntroStep(6);
-      setHasIntroFinished(true);
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
@@ -65,47 +52,6 @@ export const Hero: React.FC = () => {
       window.removeEventListener('keydown', handleSkip);
     };
   }, [reducedMotion]);
-
-  // Flourish: Backspace cycling of highlighted word after intro completes
-  useEffect(() => {
-    if (!hasIntroFinished || reducedMotion || isCyclingPaused) return;
-
-    let isMounted = true;
-    const interval = setInterval(() => {
-      if (document.hidden || isCyclingPaused) return;
-
-      const nextIdx = (activeWordIdx + 1) % CYCLING_WORDS.length;
-      const targetWord = CYCLING_WORDS[nextIdx];
-
-      // Backspace simulation
-      let currentLen = cyclingWord.length;
-      const backspaceTimer = setInterval(() => {
-        if (!isMounted) return;
-        currentLen--;
-        setCyclingWord((prev) => prev.slice(0, currentLen));
-
-        if (currentLen <= 0) {
-          clearInterval(backspaceTimer);
-          // Type new word
-          let typeIdx = 0;
-          const typeTimer = setInterval(() => {
-            if (!isMounted) return;
-            typeIdx++;
-            setCyclingWord(targetWord.slice(0, typeIdx));
-            if (typeIdx >= targetWord.length) {
-              clearInterval(typeTimer);
-              setActiveWordIdx(nextIdx);
-            }
-          }, 60);
-        }
-      }, 40);
-    }, 3500);
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [hasIntroFinished, activeWordIdx, cyclingWord.length, isCyclingPaused, reducedMotion]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (reducedMotion) return;
@@ -142,7 +88,7 @@ export const Hero: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
         {/* Left Column: Bold Editorial Copy */}
         <div className="lg:col-span-5 space-y-6 text-left relative z-10">
-          {/* Eyebrow Chip (types at 0.15s) */}
+          {/* Eyebrow Chip */}
           <div
             className={`transition-[opacity,transform] duration-300 ${
               introStep >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
@@ -158,31 +104,10 @@ export const Hero: React.FC = () => {
             </div>
           </div>
 
-          {/* H1 (types at 0.50s) with Squiggle & Block Caret */}
-          <div className="relative">
-            {/* Screen Reader Full Announcement */}
-            <span className="sr-only">describe your vision. voltrix builds the code.</span>
+          {/* H1 (Single-pass typing animation) */}
+          <HeroHeading />
 
-            <h1
-              className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[var(--landing-text-primary)] leading-[1.02] select-none"
-              style={{ fontFamily: 'var(--font-display)' }}
-              onMouseEnter={() => setIsCyclingPaused(true)}
-              onMouseLeave={() => setIsCyclingPaused(false)}
-            >
-              <span>describe your </span>
-              <span className="relative inline-block whitespace-nowrap text-[var(--landing-accent)] min-w-[4ch]">
-                {hasIntroFinished ? cyclingWord : 'vision'}
-                <Squiggle color="lime" />
-              </span>
-              .<br />
-              <span className="text-[var(--landing-text-secondary)] font-medium">
-                voltrix builds the code
-                <Caret variant="lime" className="ml-1.5" />
-              </span>
-            </h1>
-          </div>
-
-          {/* Subheading (types at 2.20s) */}
+          {/* Subheading */}
           <div
             className={`transition-[opacity,transform] duration-400 ${
               introStep >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'
@@ -193,7 +118,7 @@ export const Hero: React.FC = () => {
             </p>
           </div>
 
-          {/* CTAs (rise at 3.00s with stagger) */}
+          {/* CTAs */}
           <div
             className={`flex flex-wrap items-center gap-3 pt-2 transition-[opacity,transform] duration-400 ${
               introStep >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3'
@@ -225,12 +150,13 @@ export const Hero: React.FC = () => {
             introStep >= 5 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          {/* Safe-Anchored Floating Stickers (Overshoot entrance at 3.60s) */}
+          {/* Safe-Anchored Floating Stickers */}
+          {/* 1. Desktop only: Top-left safe anchor */}
           <div
             style={{
               transform: `translate3d(${parallax.x * -0.6}px, ${parallax.y * -0.6}px, 0)`,
             }}
-            className={`absolute -top-7 left-2 z-20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hidden lg:block ${
+            className={`absolute -top-10 left-6 z-20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hidden lg:block select-none pointer-events-none ${
               introStep >= 6 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
             }`}
           >
@@ -239,11 +165,12 @@ export const Hero: React.FC = () => {
             </Sticker>
           </div>
 
+          {/* 2. Desktop only: Top-right safe anchor */}
           <div
             style={{
               transform: `translate3d(${parallax.x * 0.7}px, ${parallax.y * 0.7}px, 0)`,
             }}
-            className={`absolute -top-7 right-4 z-20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hidden lg:block ${
+            className={`absolute -top-10 right-8 z-20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hidden lg:block select-none pointer-events-none ${
               introStep >= 6 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
             }`}
           >
@@ -252,11 +179,12 @@ export const Hero: React.FC = () => {
             </Sticker>
           </div>
 
+          {/* 3. Responsive: 1 below 640px (floating top-right above demo), max 3 on desktop, none below 360px */}
           <div
             style={{
               transform: `translate3d(${parallax.x * 0.4}px, ${parallax.y * 0.4}px, 0)`,
             }}
-            className={`absolute -bottom-8 right-1 z-20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hidden md:block ${
+            className={`absolute z-20 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] select-none pointer-events-none hidden min-[360px]:block max-[359px]:!hidden lg:-bottom-6 lg:left-6 -top-8 right-4 lg:right-auto lg:top-auto ${
               introStep >= 6 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
             }`}
           >

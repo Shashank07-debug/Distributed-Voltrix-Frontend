@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { SectionHeading } from '../components/SectionHeading';
 import { Squiggle } from '../components/Squiggle';
 import { Reveal } from '../components/Reveal';
-import { TypeText } from '../components/TypeText';
 import { MessageSquareCode, Cpu, SearchCode, Rocket } from 'lucide-react';
 
 export const Workflow: React.FC = () => {
@@ -62,11 +61,10 @@ export const Workflow: React.FC = () => {
               <Reveal key={idx} delayMs={idx * 90}>
                 <div
                   onMouseEnter={() => setActiveStep(idx)}
-                  className={`p-6 rounded-[var(--landing-radius-lg)] border-2 transition-all duration-200 cursor-pointer h-full flex flex-col justify-between ${
-                    isActive
+                  className={`p-6 rounded-[var(--landing-radius-lg)] border-2 transition-all duration-200 cursor-pointer h-full flex flex-col justify-between ${isActive
                       ? 'bg-white border-[#090D0F] shadow-[4px_4px_0px_#090D0F] -translate-y-1'
                       : 'bg-[#EDEAE1] border-[#090D0F]/15 hover:border-[#090D0F]/40'
-                  }`}
+                    }`}
                 >
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -77,11 +75,10 @@ export const Workflow: React.FC = () => {
                         {step.num}
                       </span>
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                          isActive
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${isActive
                             ? 'bg-[var(--landing-accent)] text-[#090D0F] border border-[#090D0F]'
                             : 'bg-white/80 text-[#090D0F]'
-                        }`}
+                          }`}
                       >
                         <Icon className="w-4 h-4" />
                       </div>
@@ -93,12 +90,7 @@ export const Workflow: React.FC = () => {
                           className="text-xl font-bold text-[#090D0F]"
                           style={{ fontFamily: 'var(--font-display)' }}
                         >
-                          <TypeText
-                            text={step.title}
-                            profile="heading"
-                            delayMs={idx * 140}
-                            showCaret={false}
-                          />
+                          {step.title}
                         </h3>
                         {isActive && <Squiggle color="dark" />}
                       </div>

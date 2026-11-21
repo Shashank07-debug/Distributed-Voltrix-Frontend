@@ -17,10 +17,14 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   return (
     <div
       data-lenis-prevent
-      className="h-full bg-[#080B0D] flex flex-col font-mono text-[10px] sm:text-[11px] leading-relaxed border-r border-[var(--landing-border)] select-none overflow-hidden relative fade-mask-bottom"
+      className="h-full bg-[#080B0D] flex flex-col font-mono text-[9.5px] sm:text-[10px] leading-relaxed border-r border-[var(--landing-border)] select-none overflow-hidden relative fade-mask-bottom"
+      style={{
+        maskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+        WebkitMaskImage: 'linear-gradient(to bottom, black 85%, transparent 100%)',
+      }}
     >
       {/* Tab bar */}
-      <div className="h-7 bg-[var(--landing-surface-1)] border-b border-[var(--landing-border)] flex items-center px-2 gap-1 text-[11px] overflow-x-auto [scrollbar-width:none]">
+      <div className="h-7 bg-[var(--landing-surface-1)] border-b border-[var(--landing-border)] flex items-center px-2 gap-1 text-[10px] sm:text-[11px] overflow-x-auto [scrollbar-width:none]">
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-t-[var(--landing-radius-sm)] bg-[#080B0D] border-t border-x border-[var(--landing-border)] text-[var(--landing-accent)] font-semibold shrink-0">
           <span>{activeFile}</span>
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--landing-accent)]" />
@@ -33,7 +37,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
       {/* Code body with horizontal scroll to prevent token clipping + soft right fade */}
       <div
         data-lenis-prevent
-        className="flex-1 p-2 overflow-x-auto overflow-y-hidden [scrollbar-width:none] space-y-0.5 fade-mask-right"
+        className="flex-1 p-2 overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden space-y-0.5"
+        style={{
+          maskImage: 'linear-gradient(to right, black 86%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to right, black 86%, transparent 100%)',
+        }}
       >
         {codeLines.slice(0, visibleLinesCount).map((line, idx) => {
           const isLatest = idx === visibleLinesCount - 1 && isWriting;
@@ -41,11 +49,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
           return (
             <div
               key={line.num}
-              className={`flex items-baseline gap-2.5 px-1 rounded-[2px] whitespace-pre min-w-max ${
+              className={`flex items-baseline gap-2 px-1 rounded-[2px] whitespace-pre min-w-max ${
                 isLatest ? 'bg-[var(--landing-accent-subtle)]' : ''
               }`}
             >
-              <span className="w-4 text-right text-[10px] text-[var(--landing-text-muted)] shrink-0 select-none">
+              <span className="w-4 text-right text-[9px] text-[var(--landing-text-muted)] shrink-0 select-none">
                 {line.num}
               </span>
               <span className="text-[var(--landing-text-secondary)] font-mono">
@@ -77,7 +85,7 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         })}
 
         {visibleLinesCount === 0 && (
-          <div className="text-[11px] text-[var(--landing-text-muted)] italic px-2 py-4">
+          <div className="text-[10px] text-[var(--landing-text-muted)] italic px-2 py-4">
             streaming code...
           </div>
         )}

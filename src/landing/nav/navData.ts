@@ -16,6 +16,7 @@ import {
   Workflow as WorkflowIcon,
   HelpCircle,
   Code2,
+  MessageSquareCode,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -122,6 +123,12 @@ export const NAV_MENUS: NavMenu[] = [
             description: 'Direct assistance from the core engineering team',
             href: '#resources',
             icon: LifeBuoy,
+          },
+          {
+            title: 'Contact',
+            description: 'Get in touch with the creator',
+            href: '#contact',
+            icon: MessageSquareCode,
           },
         ],
       },

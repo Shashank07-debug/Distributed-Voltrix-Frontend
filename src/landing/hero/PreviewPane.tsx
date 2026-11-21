@@ -21,7 +21,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
   return (
     <div
       data-lenis-prevent
-      className="h-full bg-[var(--landing-surface-2)] p-2.5 sm:p-3 flex flex-col justify-between font-sans text-xs select-none overflow-hidden relative"
+      className="h-full bg-[var(--landing-surface-2)] p-2 sm:p-2.5 flex flex-col justify-between font-sans text-xs select-none overflow-hidden relative"
     >
       {/* Mini App Window Header */}
       <div className="space-y-2">
@@ -32,7 +32,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                 chapter >= 4 ? 'bg-[var(--landing-success)]' : 'bg-[var(--landing-accent)]'
               }`}
             />
-            <span className="truncate max-w-[130px] sm:max-w-none">{previewUrl}</span>
+            <span className="truncate max-w-[110px] sm:max-w-none">{previewUrl}</span>
           </div>
           <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--landing-surface-1)] text-[var(--landing-accent)] font-semibold shrink-0 border border-[var(--landing-border)]">
             Live DOM
@@ -60,34 +60,34 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
               </div>
             </div>
 
-            {/* Kanban Columns with Wrapped Titles and Min Heights */}
+            {/* Kanban Columns: titles wrap to 2 lines in fixed min-heights */}
             <div className="grid grid-cols-3 gap-1.5 text-[10px]">
-              {/* Col 1 */}
-              <div className="p-1.5 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-border)] flex flex-col justify-between min-h-[62px]">
-                <div className="font-mono text-[9px] text-[var(--landing-text-muted)] font-semibold">
+              {/* Col 1: TODO */}
+              <div className="p-1.5 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-border)] flex flex-col justify-between min-h-[68px]">
+                <div className="font-mono text-[9px] text-[var(--landing-text-muted)] font-semibold mb-1">
                   TODO
                 </div>
-                <div className="p-1 rounded bg-[var(--landing-surface-2)] text-[10px] text-[var(--landing-text-secondary)] leading-tight">
+                <div className="p-1 rounded bg-[var(--landing-surface-2)] text-[9.5px] text-[var(--landing-text-secondary)] leading-tight min-h-[34px] flex items-center break-words [text-wrap:balance]">
                   {tasks.todo}
                 </div>
               </div>
 
-              {/* Col 2 - Coral pop highlight */}
-              <div className="p-1.5 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-pop-coral)]/40 flex flex-col justify-between min-h-[62px]">
-                <div className="font-mono text-[9px] text-[var(--landing-pop-coral)] font-bold">
+              {/* Col 2: ACTIVE (Coral pop highlight) */}
+              <div className="p-1.5 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-pop-coral)]/40 flex flex-col justify-between min-h-[68px]">
+                <div className="font-mono text-[9px] text-[var(--landing-pop-coral)] font-bold mb-1">
                   ACTIVE
                 </div>
-                <div className="p-1 rounded bg-[var(--landing-pop-coral-subtle)] text-[10px] text-[var(--landing-pop-coral)] font-semibold leading-tight">
+                <div className="p-1 rounded bg-[var(--landing-pop-coral-subtle)] text-[9.5px] text-[var(--landing-pop-coral)] font-semibold leading-tight min-h-[34px] flex items-center break-words [text-wrap:balance]">
                   {tasks.active}
                 </div>
               </div>
 
-              {/* Col 3 */}
-              <div className="p-1.5 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-border)] flex flex-col justify-between min-h-[62px]">
-                <div className="font-mono text-[9px] text-[var(--landing-success)] font-semibold">
+              {/* Col 3: DONE */}
+              <div className="p-1.5 rounded-[var(--landing-radius-sm)] bg-[var(--landing-surface-1)] border border-[var(--landing-border)] flex flex-col justify-between min-h-[68px]">
+                <div className="font-mono text-[9px] text-[var(--landing-success)] font-semibold mb-1">
                   DONE
                 </div>
-                <div className="p-1 rounded bg-[var(--landing-surface-2)] text-[10px] text-[var(--landing-text-muted)] line-through leading-tight">
+                <div className="p-1 rounded bg-[var(--landing-surface-2)] text-[9.5px] text-[var(--landing-text-muted)] line-through leading-tight min-h-[34px] flex items-center break-words [text-wrap:balance]">
                   {tasks.done}
                 </div>
               </div>
@@ -111,14 +111,14 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
         <span className="text-[var(--landing-text-muted)] text-[10px]">Sandbox: Isolated</span>
         {chapter === 5 && (
           <div className="relative inline-flex items-center">
-            {/* Confetti particles strictly positioned BEHIND label */}
+            {/* Confetti particles strictly positioned BEHIND badge */}
             <div
               className="absolute -inset-3 pointer-events-none overflow-visible z-0"
               aria-hidden="true"
             >
               {[...Array(14)].map((_, i) => {
                 const angle = (i * 25.7 * Math.PI) / 180;
-                const distance = 20 + (i % 3) * 7;
+                const distance = 22 + (i % 3) * 7;
                 const x = Math.cos(angle) * distance;
                 const y = Math.sin(angle) * distance;
                 const color = i % 2 === 0 ? 'var(--landing-accent)' : 'var(--landing-pop-coral)';
@@ -131,7 +131,7 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
                       left: '50%',
                       top: '50%',
                       transform: `translate(${x}px, ${y}px) rotate(${i * 24}deg)`,
-                      zIndex: -1,
+                      zIndex: 0,
                     }}
                   />
                 );
@@ -140,7 +140,6 @@ export const PreviewPane: React.FC<PreviewPaneProps> = ({
 
             {/* Badge label fully legible on top layer */}
             <span
-              aria-hidden="true"
               className="relative z-10 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--landing-accent)] text-[#090D0F] font-bold text-[10px] shadow-sm animate-in zoom-in-95 duration-200"
             >
               <CheckCircle2 className="w-3 h-3 text-[#090D0F]" />
