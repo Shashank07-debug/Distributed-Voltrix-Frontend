@@ -16,6 +16,12 @@ export const Navbar: React.FC = () => {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isLogoHovered, setIsLogoHovered] = useState(false);
 
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('menu') === 'open') {
+      setIsMobileDrawerOpen(true);
+    }
+  }, []);
+
   const triggerRefs = useRef<{ [key: string]: React.RefObject<HTMLButtonElement | null> }>({
     product: React.createRef(),
     resources: React.createRef(),

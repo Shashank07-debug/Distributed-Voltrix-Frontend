@@ -53,7 +53,7 @@ export const HeroDemo: React.FC = () => {
       >
         {/* Screen reader summary */}
         <div className="sr-only">
-          <h3>Voltrix Generation Walkthrough</h3>
+          <h2>Voltrix Generation Walkthrough</h2>
           <p>Prompt: "{selectedPreset.prompt}".</p>
           <p>Files planned, component synthesized in Monaco, live preview assembled.</p>
         </div>

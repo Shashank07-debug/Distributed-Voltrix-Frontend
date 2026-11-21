@@ -187,17 +187,17 @@ export const Footer: React.FC = () => {
 
           {/* 4 Navigation Link Columns */}
           {columns.map((col, idx) => (
-            <div key={idx} className="space-y-2.5">
+            <div key={idx} className="space-y-3">
               <div className="font-mono text-[11px] uppercase tracking-wider text-[var(--landing-text-primary)] font-bold">
                 {col.title}
               </div>
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {col.links.map((link, lIdx) => (
                   <li key={lIdx}>
                     {link.to ? (
                       <Link
                         to={link.to}
-                        className="text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
+                        className="py-1 inline-block text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
                       >
                         {link.label}
                       </Link>
@@ -205,7 +205,7 @@ export const Footer: React.FC = () => {
                       <a
                         href={link.href || '#'}
                         onClick={(e) => handleSmoothScroll(e, link.href)}
-                        className="text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
+                        className="py-1 inline-block text-[var(--landing-text-secondary)] hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
                       >
                         {link.label}
                       </a>
@@ -229,18 +229,26 @@ export const Footer: React.FC = () => {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`${DEVELOPER_NAME} on GitHub (opens in new tab)`}
-              className="relative inline-block text-[var(--landing-text-primary)] font-semibold font-mono hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center relative text-[var(--landing-text-primary)] font-semibold font-mono hover:text-[var(--landing-accent)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--landing-accent)]"
             >
               <span>{DEVELOPER_NAME}</span>
-              <span className="absolute left-0 -bottom-0.5 w-full h-[2px] bg-[var(--landing-accent)]/80 rounded-full" />
+              <span className="absolute left-0 bottom-2 w-full h-[2px] bg-[var(--landing-accent)]/80 rounded-full" />
             </a>
           </div>
 
           <div className="flex items-center gap-4 text-[var(--landing-text-muted)] text-[11px]">
-            <a href="#overview" onClick={(e) => handleSmoothScroll(e, '#overview')} className="hover:text-[var(--landing-accent)] transition-colors">
+            <a
+              href="#overview"
+              onClick={(e) => handleSmoothScroll(e, '#overview')}
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center hover:text-[var(--landing-accent)] transition-colors"
+            >
               privacy
             </a>
-            <a href="#overview" onClick={(e) => handleSmoothScroll(e, '#overview')} className="hover:text-[var(--landing-accent)] transition-colors">
+            <a
+              href="#overview"
+              onClick={(e) => handleSmoothScroll(e, '#overview')}
+              className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center hover:text-[var(--landing-accent)] transition-colors"
+            >
               terms
             </a>
           </div>
@@ -249,7 +257,7 @@ export const Footer: React.FC = () => {
 
       {/* Giant Cropped Wordmark Across Bottom */}
       <div
-        className="w-full text-center font-black tracking-tighter text-[#11171A] text-[18vw] leading-none select-none pointer-events-none -mb-8 sm:-mb-14 overflow-hidden"
+        className="w-full text-center font-black tracking-tighter text-[#162024] text-[18vw] leading-none select-none pointer-events-none -mb-8 sm:-mb-14 overflow-hidden"
         style={{ fontFamily: 'var(--font-display)' }}
         aria-hidden="true"
       >
