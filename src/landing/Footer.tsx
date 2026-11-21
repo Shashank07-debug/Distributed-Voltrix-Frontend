@@ -1,6 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Logo } from '../components/Logo';
+import { TypeText } from './components/TypeText';
+import { Squiggle } from './components/Squiggle';
+
+export const DEVELOPER_NAME = 'Shashank';
+export const DEVELOPER_URL: string | undefined = undefined;
 
 interface FooterLink {
   label: string;
@@ -53,8 +58,8 @@ export const Footer: React.FC = () => {
   ];
 
   return (
-    <footer className="border-t border-[var(--landing-border)] bg-[var(--landing-bg-ink)] text-xs text-[var(--landing-text-muted)] select-none overflow-hidden relative">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 relative z-10">
+    <footer className="border-t border-[var(--landing-border)] bg-[var(--landing-bg-ink)] text-xs text-[var(--landing-text-muted)] select-none overflow-hidden relative pb-[env(safe-area-inset-bottom)]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-8">
           {/* Brand Column (2 Cols) */}
           <div className="col-span-2 space-y-3">
@@ -65,7 +70,7 @@ export const Footer: React.FC = () => {
               autonomous application builder for makers who want to build and ship fast.
             </p>
             <div className="pt-2 font-mono text-[11px] text-[var(--landing-text-muted)]">
-              made for the late-night builders &copy; {new Date().getFullYear()}
+              made for the late-night builders
             </div>
           </div>
 
@@ -107,10 +112,45 @@ export const Footer: React.FC = () => {
           ))}
         </div>
 
-        {/* Bottom Bar with Human Sign-off */}
-        <div className="mt-14 pt-6 border-t border-[var(--landing-border)] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-[11px]">
-          <div>built with react, typescript, and caffeine.</div>
-          <div className="flex items-center gap-4 text-[var(--landing-text-muted)]">
+        {/* Clean Credit Bar */}
+        <div className="mt-14 pt-6 border-t border-[var(--landing-border)] flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs">
+          <div>&copy; 2026 Voltrix Platform Inc.</div>
+
+          {/* "Developed by Shashank" Credit Line */}
+          <div className="flex items-center gap-1.5 text-[var(--landing-text-muted)]">
+            <span>Developed by</span>
+            <span className="relative inline-block text-[var(--landing-text-primary)] font-semibold font-mono">
+              {DEVELOPER_URL ? (
+                <a
+                  href={DEVELOPER_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[var(--landing-accent)] transition-colors"
+                >
+                  <TypeText
+                    text={DEVELOPER_NAME}
+                    profile="footer"
+                    showCaret={true}
+                    caretVariant="lime"
+                    keepCaretBlinking={false}
+                  />
+                </a>
+              ) : (
+                <span className="relative inline-block">
+                  <TypeText
+                    text={DEVELOPER_NAME}
+                    profile="footer"
+                    showCaret={true}
+                    caretVariant="lime"
+                    keepCaretBlinking={false}
+                  />
+                  <span className="absolute left-0 -bottom-1 w-full h-[2px] bg-[var(--landing-accent)]/80 rounded-full" />
+                </span>
+              )}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 text-[var(--landing-text-muted)] text-[11px]">
             <a href="#overview" className="hover:text-[var(--landing-accent)] transition-colors">
               privacy
             </a>
