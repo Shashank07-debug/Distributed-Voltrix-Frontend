@@ -15,7 +15,10 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
   isWriting = false,
 }) => {
   return (
-    <div className="h-full bg-[#080B0D] flex flex-col font-mono text-[10.5px] sm:text-[11px] leading-relaxed border-r border-[var(--landing-border)] select-none overflow-hidden">
+    <div
+      data-lenis-prevent
+      className="h-full bg-[#080B0D] flex flex-col font-mono text-[10px] sm:text-[11px] leading-relaxed border-r border-[var(--landing-border)] select-none overflow-hidden relative fade-mask-bottom"
+    >
       {/* Tab bar */}
       <div className="h-7 bg-[var(--landing-surface-1)] border-b border-[var(--landing-border)] flex items-center px-2 gap-1 text-[11px] overflow-x-auto [scrollbar-width:none]">
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-t-[var(--landing-radius-sm)] bg-[#080B0D] border-t border-x border-[var(--landing-border)] text-[var(--landing-accent)] font-semibold shrink-0">
@@ -27,8 +30,11 @@ export const EditorPane: React.FC<EditorPaneProps> = ({
         </div>
       </div>
 
-      {/* Code body with horizontal scroll to prevent token clipping */}
-      <div className="flex-1 p-2 overflow-x-auto overflow-y-hidden [scrollbar-width:none] space-y-0.5">
+      {/* Code body with horizontal scroll to prevent token clipping + soft right fade */}
+      <div
+        data-lenis-prevent
+        className="flex-1 p-2 overflow-x-auto overflow-y-hidden [scrollbar-width:none] space-y-0.5 fade-mask-right"
+      >
         {codeLines.slice(0, visibleLinesCount).map((line, idx) => {
           const isLatest = idx === visibleLinesCount - 1 && isWriting;
 

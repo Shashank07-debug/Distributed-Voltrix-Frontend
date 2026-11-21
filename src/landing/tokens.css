@@ -1,6 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700;800&family=Playfair+Display:ital,wght@1,600;1,700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-/* Voltrix Theme V2 - Creator Tool with Attitude */
+/* Voltrix Theme V3 - Ultra-Smooth Creator Tool */
 :root {
   /* Deep Ink Base */
   --landing-bg: #090D0F;
@@ -13,7 +13,7 @@
   --landing-border: rgba(255, 255, 255, 0.08);
   --landing-border-hover: rgba(255, 255, 255, 0.18);
   --landing-border-strong: rgba(255, 255, 255, 0.28);
-  --landing-border-bone: rgba(10, 15, 17, 0.12);
+  --landing-border-bone: rgba(9, 13, 15, 0.12);
 
   /* Typography Colors */
   --landing-text-primary: #F8F9FA;
@@ -48,14 +48,25 @@
   --font-editorial: 'Playfair Display', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
-
-  /* Hard offset shadows */
-  --shadow-hard: 3px 3px 0px #000000;
-  --shadow-hard-lime: 4px 4px 0px #D4FF32;
-  --shadow-hard-coral: 3px 3px 0px #FF5533;
 }
 
-/* Light / Bone Mode Override (applied to bone contrast sections) */
+html {
+  overscroll-behavior: none;
+  scrollbar-gutter: stable;
+}
+
+/* Anchor offset for floating navbar */
+section[id] {
+  scroll-margin-top: 96px;
+}
+
+/* Below-the-fold content visibility for ultra-smooth 60fps rendering */
+.section-contained {
+  content-visibility: auto;
+  contain-intrinsic-size: 800px;
+}
+
+/* Light / Bone Mode Override */
 .theme-bone {
   --landing-bg: #F5F3EC;
   --landing-surface-1: #EBE8E0;
@@ -163,4 +174,15 @@
     transition: none;
     transform: none !important;
   }
+}
+
+/* Soft Edge Fade Mask for Code and Tree panes */
+.fade-mask-bottom {
+  mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+}
+
+.fade-mask-right {
+  mask-image: linear-gradient(to right, black 90%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
 }

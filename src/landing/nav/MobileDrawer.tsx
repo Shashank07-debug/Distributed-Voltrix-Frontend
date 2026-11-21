@@ -51,6 +51,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
       {/* Drawer Panel */}
       <div
         ref={drawerRef}
+        data-lenis-prevent
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"

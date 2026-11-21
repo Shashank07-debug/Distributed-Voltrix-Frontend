@@ -112,6 +112,7 @@ export const NavDropdown: React.FC<NavDropdownProps> = ({
       {isOpen && (
         <div
           ref={panelRef}
+          data-lenis-prevent
           id={`nav-menu-${menu.id}`}
           role="menu"
           aria-labelledby={`nav-trigger-${menu.id}`}

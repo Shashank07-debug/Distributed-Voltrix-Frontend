@@ -8,7 +8,10 @@ export interface FileTreeProps {
 
 export const FileTree: React.FC<FileTreeProps> = ({ files, visibleCount }) => {
   return (
-    <div className="h-full bg-[var(--landing-surface-1)] border-r border-[var(--landing-border)] p-2.5 font-mono text-[11px] select-none overflow-hidden flex flex-col">
+    <div
+      data-lenis-prevent
+      className="h-full bg-[var(--landing-surface-1)] border-r border-[var(--landing-border)] p-2.5 font-mono text-[11px] select-none overflow-hidden flex flex-col fade-mask-bottom"
+    >
       <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--landing-text-muted)] px-1 pb-2 border-b border-[var(--landing-border)] flex items-center justify-between">
         <span>Files</span>
         <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[var(--landing-surface-2)] text-[var(--landing-accent)] font-semibold">
