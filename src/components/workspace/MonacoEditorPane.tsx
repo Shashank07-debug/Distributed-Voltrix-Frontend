@@ -108,11 +108,15 @@ export const MonacoEditorPane: React.FC<MonacoEditorPaneProps> = ({
       },
     });
 
-    // Ignore noise diagnostics like 7027 (Unreachable code detected false alarm on JSX)
+    // Disable syntax and semantic validation for read-only code viewer to prevent false red error marks
     monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
       diagnosticCodesToIgnore: [7027, 2695, 2304],
     });
     monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+      noSemanticValidation: true,
+      noSyntaxValidation: true,
       diagnosticCodesToIgnore: [7027, 2695, 2304],
     });
 
@@ -299,7 +303,7 @@ export const MonacoEditorPane: React.FC<MonacoEditorPaneProps> = ({
               fontFamily: '"JetBrains Mono", monospace',
               fontLigatures: true,
               lineHeight: 22,
-              minimap: { enabled: !isMobile, showSlider: 'mouseover' },
+              minimap: { enabled: false },
               scrollBeyondLastLine: false,
               lineNumbers: 'on',
               lineNumbersMinChars: 3,
