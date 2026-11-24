@@ -20,6 +20,7 @@ import { MonacoEditorPane } from '../../components/workspace/MonacoEditorPane';
 import { PreviewPane } from '../../components/workspace/PreviewPane';
 import { MembersDrawer } from '../../components/workspace/MembersDrawer';
 import { AppNavbar, WorkspaceStatus } from '../../components/layout/AppNavbar';
+import { normalizePreviewUrl } from '../../utils/previewUrl';
 import { toast } from 'sonner';
 
 const findDefaultFile = (files: { path: string }[]): string | null => {
@@ -66,7 +67,8 @@ export const WorkspacePage: React.FC = () => {
   // Deploy & preview state
   const [previewUrl, setPreviewUrl] = useState<string | null>(() => {
     try {
-      return localStorage.getItem(`voltrix_deploy_${projectId}`) || null;
+      const stored = localStorage.getItem(`voltrix_deploy_${projectId}`);
+      return stored ? normalizePreviewUrl(stored) : null;
     } catch {
       return null;
     }
@@ -172,9 +174,10 @@ export const WorkspacePage: React.FC = () => {
     mutationFn: () => projectsApi.deployProject(projectId!),
     onSuccess: (data) => {
       toast.success('Project deployed successfully!');
-      setPreviewUrl(data.previewUrl);
+      const cleanUrl = normalizePreviewUrl(data.previewUrl);
+      setPreviewUrl(cleanUrl);
       try {
-        localStorage.setItem(`voltrix_deploy_${projectId}`, data.previewUrl);
+        localStorage.setItem(`voltrix_deploy_${projectId}`, cleanUrl);
       } catch {}
     },
     onError: (err: unknown) => {
