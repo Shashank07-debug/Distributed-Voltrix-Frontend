@@ -1,23 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import {
-  ChevronDown,
-  ChevronRight,
-  FileCode,
-  CheckCircle2,
-  Terminal,
-  Brain,
-  Sparkles,
-  AlertTriangle,
-  RotateCcw,
-  Copy,
-  Check,
-} from 'lucide-react';
-import { chatApi, ChatMessage, ChatEvent } from '../../api/chat';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Sparkles } from 'lucide-react';
+import { chatApi, ChatMessage } from '../../api/chat';
 import { ProjectRole } from '../../api/workspace';
+import { parseAssistantText } from '../../utils/assistantParser';
+import { AssistantMessage } from './AssistantMessage';
 import { Composer } from './Composer';
-import { toast } from 'sonner';
 
 interface ChatPaneProps {
   projectId: string;
@@ -26,38 +13,6 @@ interface ChatPaneProps {
   onStreamStateChange?: (isStreaming: boolean) => void;
   onGenerationCompleted?: () => void;
 }
-
-/* ─── Code Block with Copy Button ─────────────────────────────────────────── */
-const CodeBlock: React.FC<{ language?: string; value: string }> = ({ language, value }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(value);
-    setCopied(true);
-    toast.success('Code copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <div className="my-2 rounded-xl border border-[var(--landing-border)] bg-[var(--landing-bg-ink)] overflow-hidden font-mono text-xs">
-      <div className="px-3 py-1.5 bg-[var(--landing-surface-1)] border-b border-[var(--landing-border)] flex items-center justify-between text-[11px] text-[var(--landing-text-secondary)]">
-        <span>{language || 'code'}</span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          aria-label="Copy code to clipboard"
-          className="flex items-center gap-1 hover:text-white transition-colors"
-        >
-          {copied ? <Check className="w-3 h-3 text-[var(--landing-accent)]" /> : <Copy className="w-3 h-3" />}
-          <span>{copied ? 'copied' : 'copy'}</span>
-        </button>
-      </div>
-      <pre className="p-3 overflow-x-auto text-gray-200 leading-relaxed font-mono text-[11px]" data-lenis-prevent>
-        <code>{value}</code>
-      </pre>
-    </div>
-  );
-};
 
 export const ChatPane: React.FC<ChatPaneProps> = ({
   projectId,
@@ -70,12 +25,18 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
   const [inputMessage, setInputMessage] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [activeThoughtCollapsed, setActiveThoughtCollapsed] = useState<Record<string, boolean>>({});
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const userScrolledUpRef = useRef(false);
+
+  // Throttled streaming buffer refs
+  const streamingBufferRef = useRef('');
+  const lastCommitTimeRef = useRef(0);
+  const rafIdRef = useRef<number | null>(null);
+  const notifiedFilesRef = useRef<Set<string>>(new Set());
+  const streamStartTimeRef = useRef(0);
 
   const isReadOnly = role === 'VIEWER';
 
@@ -113,6 +74,9 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
     };
   }, [projectId]);
 
@@ -130,12 +94,20 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
     }
   }, [messages, isStreaming]);
 
-  const toggleThought = (eventId: string) => {
-    setActiveThoughtCollapsed((prev) => ({
-      ...prev,
-      [eventId]: !prev[eventId],
-    }));
-  };
+  // Commit throttled buffer to state
+  const commitLiveContent = useCallback((assistantMsgId: string, content: string, isStillStreaming = true) => {
+    setMessages((prev) =>
+      prev.map((msg) =>
+        msg.id === assistantMsgId
+          ? {
+              ...msg,
+              content,
+              isStreaming: isStillStreaming,
+            }
+          : msg
+      )
+    );
+  }, []);
 
   /**
    * Primary stream initiator.
@@ -185,6 +157,10 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
 
     userScrolledUpRef.current = false;
     setIsStreaming(true);
+    streamingBufferRef.current = '';
+    notifiedFilesRef.current.clear();
+    lastCommitTimeRef.current = performance.now();
+    streamStartTimeRef.current = Date.now();
 
     // Cancel any previous stream before starting a new one
     if (abortControllerRef.current) {
@@ -198,43 +174,71 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
         message: userText,
         projectId,
         signal: abortController.signal,
-        onEvent: (event: ChatEvent) => {
-          setMessages((prev) =>
-            prev.map((msg) => {
-              if (msg.id === assistantMsgId) {
-                const updatedEvents = [...msg.events, event];
-                if (event.type === 'FILE_EDIT' && event.filePath && onFileEdited) {
-                  onFileEdited(event.filePath);
-                }
-                return {
-                  ...msg,
-                  events: updatedEvents,
-                  content:
-                    event.type === 'MESSAGE'
-                      ? msg.content + event.content
-                      : msg.content,
-                };
+        onRawChunk: (_fragment: string, accumulated: string) => {
+          streamingBufferRef.current = accumulated;
+
+          // Notify file tree for newly observed files
+          const view = parseAssistantText(accumulated, true);
+          for (const block of view.blocks) {
+            if (block.kind === 'file' && !notifiedFilesRef.current.has(block.path)) {
+              notifiedFilesRef.current.add(block.path);
+              if (onFileEdited) {
+                onFileEdited(block.path);
               }
-              return msg;
-            })
-          );
-        },
-        onComplete: () => {
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMsgId ? { ...msg, isStreaming: false, error: undefined } : msg
-            )
-          );
-          if (onGenerationCompleted) {
-            onGenerationCompleted();
+            }
+          }
+
+          // Throttle commit to state: at most once per animation frame or ~50ms
+          const now = performance.now();
+          if (now - lastCommitTimeRef.current >= 50) {
+            lastCommitTimeRef.current = now;
+            commitLiveContent(assistantMsgId, accumulated, true);
+          } else if (!rafIdRef.current) {
+            rafIdRef.current = requestAnimationFrame(() => {
+              rafIdRef.current = null;
+              lastCommitTimeRef.current = performance.now();
+              commitLiveContent(assistantMsgId, streamingBufferRef.current, true);
+            });
           }
         },
-        onError: (err: Error) => {
+        onComplete: (finalText: string) => {
+          if (rafIdRef.current) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+          }
+
+          const elapsedSeconds = Math.round((Date.now() - streamStartTimeRef.current) / 1000);
+
           setMessages((prev) =>
             prev.map((msg) =>
               msg.id === assistantMsgId
                 ? {
                     ...msg,
+                    content: finalText || streamingBufferRef.current,
+                    isStreaming: false,
+                    error: undefined,
+                    tokenUsed: elapsedSeconds,
+                  }
+                : msg
+            )
+          );
+
+          if (onGenerationCompleted) {
+            onGenerationCompleted();
+          }
+        },
+        onError: (err: Error, partialText?: string) => {
+          if (rafIdRef.current) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+          }
+
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    content: partialText || streamingBufferRef.current || msg.content,
                     isStreaming: false,
                     error: err.message || 'Stream connection ended unexpectedly.',
                   }
@@ -242,15 +246,30 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
             )
           );
         },
-        onCancelled: () => {
+        onCancelled: (partialText?: string) => {
+          if (rafIdRef.current) {
+            cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+          }
+
           setMessages((prev) =>
             prev.map((msg) =>
-              msg.id === assistantMsgId ? { ...msg, isStreaming: false } : msg
+              msg.id === assistantMsgId
+                ? {
+                    ...msg,
+                    content: partialText || streamingBufferRef.current || msg.content,
+                    isStreaming: false,
+                  }
+                : msg
             )
           );
         },
       });
     } catch (err: unknown) {
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
       const errorMsg = err instanceof Error ? err.message : 'Unexpected streaming failure';
       setMessages((prev) =>
         prev.map((msg) =>
@@ -291,101 +310,6 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
       abortControllerRef.current = null;
     }
     setIsStreaming(false);
-  };
-
-  const renderEvent = (event: ChatEvent) => {
-    switch (event.type) {
-      case 'THOUGHT': {
-        const isCollapsed = activeThoughtCollapsed[event.id] ?? true;
-        return (
-          <div key={event.id} className="my-1.5 rounded-xl border border-[var(--landing-border)] bg-[var(--landing-surface-2)]/40 overflow-hidden text-xs">
-            <button
-              type="button"
-              onClick={() => toggleThought(event.id)}
-              aria-label="Toggle thinking trace"
-              className="w-full px-3 py-1.5 flex items-center justify-between text-[var(--landing-text-secondary)] hover:text-white font-mono text-[11px] transition-colors cursor-pointer"
-            >
-              <div className="flex items-center gap-1.5">
-                <Brain className="w-3.5 h-3.5 text-[var(--landing-accent)]" />
-                <span>reasoning trace</span>
-              </div>
-              {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-            {!isCollapsed && (
-              <div className="p-3 font-mono text-[11px] text-[var(--landing-text-secondary)] bg-[var(--landing-bg-ink)] border-t border-[var(--landing-border)] leading-relaxed whitespace-pre-wrap">
-                {event.content}
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      case 'FILE_EDIT':
-        return (
-          <div
-            key={event.id}
-            className="my-1.5 px-3 py-2 rounded-xl bg-[var(--landing-accent-subtle)] border border-[var(--landing-accent)]/30 flex items-center justify-between text-xs font-mono"
-          >
-            <div className="flex items-center gap-2 text-[var(--landing-accent)] truncate">
-              <FileCode className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">
-                edited <strong className="text-[var(--landing-text-primary)]">{event.filePath || 'file'}</strong>
-              </span>
-            </div>
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0 ml-2" />
-          </div>
-        );
-
-      case 'TOOL_LOG':
-        return (
-          <div key={event.id} className="my-1 px-2.5 py-1 rounded-lg bg-[var(--landing-bg-ink)] border border-[var(--landing-border)] font-mono text-[11px] text-[var(--landing-text-secondary)] flex items-center gap-2">
-            <Terminal className="w-3 h-3 text-[var(--landing-accent)] shrink-0" />
-            <span className="truncate">{event.content}</span>
-          </div>
-        );
-
-      case 'PROGRESS':
-        return (
-          <div
-            key={event.id}
-            className="my-1 px-2.5 py-1 rounded-lg bg-[var(--landing-surface-2)] border border-[var(--landing-border)] font-mono text-[11px] text-[var(--landing-accent)] flex items-center gap-2 animate-pulse"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[var(--landing-accent)] shrink-0" />
-            <span className="truncate">{event.content}</span>
-          </div>
-        );
-
-      case 'MESSAGE':
-      default:
-        return (
-          <div key={event.id} className="prose prose-invert prose-sm max-w-none text-[var(--landing-text-primary)] leading-relaxed font-sans text-xs">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                code({ className, children, ...props }) {
-                  const match = /language-(\w+)/.exec(className || '');
-                  const isInline = !match && !String(children).includes('\n');
-                  if (isInline) {
-                    return (
-                      <code className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[11px] text-[var(--landing-accent)]" {...props}>
-                        {children}
-                      </code>
-                    );
-                  }
-                  return (
-                    <CodeBlock
-                      language={match ? match[1] : undefined}
-                      value={String(children).replace(/\n$/, '')}
-                    />
-                  );
-                },
-              }}
-            >
-              {event.content}
-            </ReactMarkdown>
-          </div>
-        );
-    }
   };
 
   return (
@@ -432,7 +356,7 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
           messages.map((msg, idx) => (
             <div
               key={msg.id}
-              className={`flex flex-col ${msg.role === 'USER' ? 'items-end' : 'items-start'}`}
+              className={`flex flex-col ${msg.role === 'USER' ? 'items-end' : 'items-start'} w-full`}
             >
               {msg.role === 'USER' ? (
                 // User Bubble: right-aligned, max 85% width
@@ -440,42 +364,15 @@ export const ChatPane: React.FC<ChatPaneProps> = ({
                   {msg.content}
                 </div>
               ) : (
-                // Assistant Message: left-aligned with NO nested bordered boxes
+                // Unified Assistant Message: left-aligned with NO extra nested bordered boxes
                 <div className="w-full text-xs text-[var(--landing-text-primary)] leading-relaxed font-sans">
-                  {msg.events && msg.events.length > 0 ? (
-                    msg.events
-                      .sort((a, b) => (a.sequenceOrder || 0) - (b.sequenceOrder || 0))
-                      .map(renderEvent)
-                  ) : msg.content ? (
-                    <div className="prose prose-invert prose-sm max-w-none text-[var(--landing-text-primary)] font-sans text-xs">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
-                    </div>
-                  ) : msg.isStreaming ? (
-                    <div className="flex items-center gap-1.5 text-xs font-mono text-[var(--landing-text-secondary)] py-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--landing-accent)] animate-ping" />
-                      <span>thinking...</span>
-                    </div>
-                  ) : null}
-
-                  {/* Compact Single Inline Error Alert with Retry Button */}
-                  {msg.error && (
-                    <div className="mt-2 px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 flex items-center justify-between text-xs font-sans gap-2">
-                      <div className="flex items-center gap-2 truncate">
-                        <AlertTriangle className="w-3.5 h-3.5 text-red-400 shrink-0" />
-                        <span className="truncate">{msg.error}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRetry(idx)}
-                        disabled={isStreaming}
-                        aria-label="Retry generation"
-                        className="px-2.5 py-1 rounded-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-200 text-[11px] font-mono flex items-center gap-1 transition-transform active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>retry</span>
-                      </button>
-                    </div>
-                  )}
+                  <AssistantMessage
+                    message={msg}
+                    isStreaming={msg.isStreaming}
+                    onRetry={() => handleRetry(idx)}
+                    onOpenFile={onFileEdited}
+                    durationSeconds={msg.tokenUsed}
+                  />
                 </div>
               )}
             </div>
